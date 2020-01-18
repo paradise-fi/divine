@@ -1,146 +1,135 @@
-// -*- C++ -*- (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2020 Petr Ročkai <code@fixp.eu>
+ * (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 #pragma once
 
-#include <rst/tristate.hpp>
-#include <rst/base.hpp>
+#include "tristate.hpp"
+#include "base.hpp"
 
-#include <variant>
 #include <brick-assert>
 
-namespace __dios::rst::abstract {
-
-    struct constant_t : tagged_abstract_domain_t
+namespace __lava
+{
+    struct [[gnu::packed]] constant_data
     {
-        using value_t = uint64_t;
-
-        enum class type_t : uint8_t { Integer, Float, Pointer };
-
-        type_t type;
+        uint64_t value;
+        enum type_t { bv, fp, ptr } type;
         bitwidth_t bw;
-        value_t value;
+    };
 
-        _LART_INLINE static constant_t& get_constant( abstract_value_t ptr ) noexcept
-        {
-            return *static_cast< constant_t * >( ptr );
-        }
+    using constant_storage = tagged_storage< constant_data >;
+
+    struct constant : constant_storage, domain_mixin< constant >
+    {
+        using constant_storage::constant_storage;
+
+        constant( constant_data::type_t t, bitwidth_t bw, uint64_t v ) noexcept
+            : tagged_storage< constant_data >( constant_data{ v, t, bw } )
+        {}
 
         template< typename concrete_t >
-        _LART_NOINLINE static abstract_value_t lift( concrete_t value ) noexcept
+        static auto lift( concrete_t value ) noexcept
+            -> std::enable_if_t< std::is_trivial_v< concrete_t >, constant >
         {
-            static_assert( sizeof( concrete_t ) <= sizeof( value_t ) );
-            auto ptr = __vm_obj_make( sizeof( constant_t ), _VM_PT_Heap );
-            new ( ptr ) constant_t();
+            static_assert( sizeof( concrete_t ) <= 8 );
 
-            auto con = static_cast< constant_t * >( ptr );
-            if constexpr ( std::is_pointer_v< concrete_t > ) {
-                con->value = reinterpret_cast< uintptr_t >( value );
-            } else {
-                con->value = value;
+            uint64_t val;
+            constant_data::type_t type;
+
+            if constexpr ( std::is_pointer_v< concrete_t > )
+            {
+                val = reinterpret_cast< uintptr_t >( value );
+                type = constant_data::ptr;
             }
+            else
+                val = value;
 
             if constexpr ( std::is_integral_v< concrete_t > )
-                con->type = type_t::Integer;
-            else if constexpr ( std::is_floating_point_v< concrete_t > )
-                con->type = type_t::Float;
-            else if constexpr ( std::is_pointer_v< concrete_t > )
-                con->type = type_t::Pointer;
+                type = constant_data::bv;
+            if constexpr ( std::is_floating_point_v< concrete_t > )
+                type = constant_data::fp;
+
+            return { type, sizeof( concrete_t ) * 8, val };
+        }
+
+        static constant lift_any() noexcept
+        {
+            // UNREACHABLE( "Constant domain does not provide lift_any operation" );
+        }
+
+        template< typename T >
+        uint64_t trunc( uint64_t v ) noexcept
+        {
+            return static_cast< T >( v );
+        }
+
+        template< typename F, typename... val_t  >
+        static constant wtu( F f_, const val_t & ... vals ) noexcept
+        {
+            bitwidth_t bw = std::max( { vals->bw ... } );
+            const auto t_bv = constant_data::bv;
+            auto f = [&]( auto... x ) noexcept -> uint64_t { return f_( x... ); };
+
+            if ( ( ( vals->type == constant_data::bv ) && ... ) )
+                switch ( bw )
+                {
+                    case  1: return { t_bv, bw, f( static_cast< bool >( vals->value ) ... ) };
+                    case  8: return { t_bv, bw, f( static_cast< uint8_t >( vals->value ) ... ) };
+                    case 16: return { t_bv, bw, f( static_cast< uint16_t >( vals->value ) ... ) };
+                    case 32: return { t_bv, bw, f( static_cast< uint32_t >( vals->value ) ... ) };
+                    case 64: return { t_bv, bw, f( static_cast< uint64_t >( vals->value ) ... ) };
+                }
+
+            __builtin_trap();
+            // NOT_IMPLEMENTED();
+        }
+
+        template< typename F, typename... val_t  >
+        static constant wts( F, const val_t & ... ) noexcept
+        {
+            __builtin_trap();
+            // NOT_IMPLEMENTED();
+        }
+
+        static constant op_thaw( constant c, uint8_t bw ) noexcept
+        {
+            constant d = c;
+            d->bw = bw;
+            wtu( [&]( auto f ) noexcept { return d->bw = f; }, d );
+            return d;
+        }
+
+        static tristate to_tristate( const constant &val ) noexcept
+        {
+            if ( val->value )
+                return { tristate::yes };
             else
-                static_assert( "unsupported constant type" );
-
-            con->bw = bitwidth< concrete_t >();
-            return static_cast< abstract_value_t >( ptr );
+                return { tristate::no };
         }
 
-        #define __lift( name, concrete_t ) \
-            _LART_INTERFACE static abstract_value_t lift_one_ ## name( concrete_t value ) noexcept \
-            { \
-                return lift( value ); \
-            }
-
-        /* abstraction operations */
-        __lift( i1, bool )
-        __lift( i8, uint8_t )
-        __lift( i16, uint16_t )
-        __lift( i32, uint32_t )
-        __lift( i64, uint64_t )
-        __lift( ptr, void * )
-
-        _LART_INTERFACE
-        static abstract_value_t lift_any() noexcept
+        static constant assume( const constant &v, const constant &c, bool expect ) noexcept
         {
-            tagged_abstract_domain_t(); // for LART to detect lift_any
-            UNREACHABLE( "Constant domain does not provide lift_any operation" );
-        }
-
-        #define PERFORM_LIFT_IF( type ) \
-            if ( bw == bitwidth< type >() ) \
-                return lift( static_cast< type >( val ) );
-
-        template< typename concrete_t >
-        _LART_INLINE concrete_t lower() const noexcept
-        {
-            return static_cast< concrete_t >( value );
-        }
-
-        _LART_INTERFACE
-        static abstract_value_t op_thaw( abstract_value_t constant, uint8_t bw ) noexcept
-        {
-            auto val = get_constant( constant ).value;
-            PERFORM_LIFT_IF( bool )
-            PERFORM_LIFT_IF( uint8_t )
-            PERFORM_LIFT_IF( uint16_t )
-            PERFORM_LIFT_IF( uint32_t )
-            PERFORM_LIFT_IF( uint64_t )
-
-            UNREACHABLE( "Unsupported bitwidth" );
-        }
-
-        _LART_INTERFACE
-        static tristate_t to_tristate( abstract_value_t val ) noexcept
-        {
-            if ( get_constant( val ).value )
-                return { tristate_t::True };
-            return { tristate_t::False };
-        }
-
-        _LART_INTERFACE
-        static abstract_value_t assume( abstract_value_t value
-                                      , abstract_value_t constraint
-                                      , bool expect ) noexcept
-        {
-            if ( get_constant( constraint ).lower< bool >() != expect )
+            if ( c->value != expect )
                 __vm_cancel();
-            return value;
+            return v;
         }
-
-        #define PERFORM_OP_IF( type ) \
-            if ( bw == bitwidth< type >() ) \
-                return lift( op( static_cast< type >( l.value ), static_cast< type >( r.value ) ) );
-
-        template< bool _signed = false, typename op_t >
-        _LART_INLINE static abstract_value_t binary( abstract_value_t lhs
-                                                   , abstract_value_t rhs
-                                                   , op_t op ) noexcept
-        {
-            auto l = get_constant( lhs );
-            auto r = get_constant( rhs );
-            auto bw = std::max( l.bw, r.bw );
-            if constexpr ( _signed ) {
-                PERFORM_OP_IF( int8_t )
-                PERFORM_OP_IF( int16_t )
-                PERFORM_OP_IF( int32_t )
-                PERFORM_OP_IF( int64_t )
-            } else {
-                PERFORM_OP_IF( bool )
-                PERFORM_OP_IF( uint8_t )
-                PERFORM_OP_IF( uint16_t )
-                PERFORM_OP_IF( uint32_t )
-                PERFORM_OP_IF( uint64_t )
-            }
-
-            UNREACHABLE( "unsupported integer constant bitwidth", bw );
-        }
-
+#if 0
         #define PERFORM_CAST_IF( type ) \
             if ( bw == bitwidth< type >() ) \
                 return lift( static_cast< type >( v ) );
@@ -208,28 +197,42 @@ namespace __dios::rst::abstract {
             { \
                 return cast< _signed >( val, bw ); \
             }
+#endif
+        using cv = constant;
+        using cr = const constant &;
 
-        /* arithmetic operations */
-        __bin( op_add, std::plus )
-        //__bin( op_fadd )
-        __bin( op_sub, std::minus )
-        //__bin( op_fsub )
-        __bin( op_mul, std::multiplies )
-        //__bin( op_fmul )
-        __bin( op_udiv, std::divides )
-        __sbin( op_sdiv, std::divides )
-        //__bin( op_fdiv )
-        __bin( op_urem, std::modulus )
-        __sbin( op_srem, std::modulus )
-        //__bin( op_frem )
+        static cv op_add ( cr a, cr b ) noexcept { return wtu( std::plus(), a, b ); }
+        static cv op_sub ( cr a, cr b ) noexcept { return wtu( std::minus(), a, b ); }
+        static cv op_mul ( cr a, cr b ) noexcept { return wtu( std::multiplies(), a, b ); }
+        static cv op_sdiv( cr a, cr b ) noexcept { return wts( std::divides(), a, b ); }
+        static cv op_udiv( cr a, cr b ) noexcept { return wtu( std::divides(), a, b ); }
+        static cv op_srem( cr a, cr b ) noexcept { return wts( std::modulus(), a, b ); }
+        static cv op_urem( cr a, cr b ) noexcept { return wtu( std::modulus(), a, b ); }
 
+        static cv op_and( cr a, cr b ) noexcept { return wtu( std::bit_and(), a, b ); }
+        static cv op_or ( cr a, cr b ) noexcept { return wtu( std::bit_or(), a, b ); }
+        static cv op_xor( cr a, cr b ) noexcept { return wtu( std::bit_xor(), a, b ); }
+
+        static constexpr auto shl = []( auto a, auto b ) noexcept { return a << b; };
+        static constexpr auto shr = []( auto a, auto b ) noexcept { return a >> b; };
+
+        static cv op_shl ( cr a, cr b ) noexcept { return wtu( shl, a, b ); }
+        static cv op_ashr( cr a, cr b ) noexcept { return wts( shr, a, b ); }
+        static cv op_lshr( cr a, cr b ) noexcept { return wtu( shr, a, b ); }
+
+        static cv op_eq( cr a, cr b ) noexcept { return wtu( std::equal_to(), a, b ); }
+        static cv op_ne( cr a, cr b ) noexcept { return wtu( std::not_equal_to(), a, b ); }
+
+        // op_fadd
+        // op_fsub
+        // op_fmul
+        // op_fdiv
+        // op_frem
+#if 0
         /* bitwise operations */
         __bin( op_shl, op::shift_left )
         __bin( op_lshr, op::shift_right )
         __sbin( op_ashr, op::arithmetic_shift_right )
-        __bin( op_and, std::bit_and )
-        __bin( op_or, std::bit_or )
-        __bin( op_xor, std::bit_xor )
 
         /* comparison operations */
         //__bin( op_ffalse );
@@ -248,6 +251,7 @@ namespace __dios::rst::abstract {
         //__bin( op_fule );
         //__bin( op_fune );
         //__bin( op_ftrue );
+
         __bin( op_eq, std::equal_to );
         __bin( op_ne, std::not_equal_to );
         __bin( op_ugt, std::greater );
@@ -271,20 +275,12 @@ namespace __dios::rst::abstract {
         //__cast( op_ptrtoint );
         //__cast( op_sitofp, SIntToFP );
         //__cast( op_uitofp, UIntToFP );
-
-        static void trace( abstract_value_t ptr, const char * msg = "" ) noexcept
+#endif
+        static void trace( constant ptr, const char * msg = "" ) noexcept
         {
-            __dios_trace_f( "%s%d", msg, get_constant( ptr ).value );
+            __dios_trace_f( "%s%d", msg, ptr->value );
         };
+    };
 
-    } __attribute__((packed));
-
-    static_assert( sizeof( constant_t ) == 11 );
-
-    _LART_INLINE
-    static bool is_constant( uint8_t domain ) noexcept
-    {
-        return is_domain< constant_t >( domain );
-    }
-
-} // namespace __dios::rst::abstract
+    static_assert( sizeof( constant ) == 8 );
+}
