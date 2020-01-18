@@ -43,6 +43,7 @@ struct Stepper
     Components _ff_components; // Fast forward components
     bool _stop_on_fault, _stop_on_error, _stop_on_accept, _booting, _break;
     bool _sigint;
+    int _columns = 80;
     std::pair< int, int > _lines, _instructions, _states, _jumps;
     std::pair< llvm::StringRef, int > _line;
 
