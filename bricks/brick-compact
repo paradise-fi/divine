@@ -254,6 +254,97 @@ namespace brq
         }
     };
 
+    template< typename key_t, typename val_t, typename container = std::vector< val_t > >
+    struct dense_map : derive_eq, derive_ord
+    {
+        using key_type = key_t;
+        using mapped_type = val_t;
+        using value_type = std::pair< key_t, val_t >;
+
+        using size_type = typename container::size_type;
+        using reference = std::pair< key_t, val_t & >;
+        using const_reference = std::pair< key_t, const val_t & >;
+        using base_iterator = typename container::iterator;
+        using base_const_iterator = typename container::const_iterator;
+
+        container _container;
+
+        template< typename ref_t >
+        struct proxy
+        {
+            ref_t ref;
+            ref_t *operator->() { return &ref; }
+            proxy( key_t i, typename ref_t::second_type v ) : ref( i, v ) {}
+        };
+
+        template< typename base, typename ref >
+        struct iterator_t : derive_eq, derive_ord
+        {
+            base _iter;
+            key_t _index;
+            iterator_t( key_t idx, base it ) : _iter( it ), _index( idx ) {}
+
+            ref operator*() { return { _index, *_iter }; }
+            proxy< ref > operator->() { return { _index, *_iter }; }
+            bool operator<( iterator_t o ) const { return _iter < o._iter; }
+            bool operator==( iterator_t o ) const { return _iter == o._iter; }
+            iterator_t operator+( key_t k ) const { return iterator_t( _index + k, _iter + k ); }
+            iterator_t &operator++() { ++_iter; ++_index; return *this; }
+            iterator_t operator++(int) { auto rv = *this; ++*this; return rv; }
+        };
+
+        using const_iterator = iterator_t< typename container::const_iterator, const_reference >;
+        using iterator       = iterator_t< typename container::iterator, reference >;
+
+        auto begin() { return iterator( 0, _container.begin() ); }
+        auto begin() const { return cbegin(); }
+        auto cbegin() const { return const_iterator( 0, _container.cbegin() ); }
+        auto end() { return iterator( size(), _container.end() ); }
+        auto end() const { return cend(); }
+        auto cend() const { return const_iterator( size(), _container.cend() ); }
+
+        auto empty() const { return _container.empty(); }
+        auto size() const { return _container.size(); }
+
+        void clear() noexcept { _container.clear(); }
+
+        bool _bump( key_t k )
+        {
+            if ( size_t( k ) < _container.size() )
+                return false;
+            else
+                return _container.resize( k + 1 ), true;
+        }
+
+        dense_map() = default;
+
+        val_t &operator[]( key_t k ) { _bump( k ); return _container[ k ]; }
+
+        std::pair< iterator, bool > insert( const_reference value )
+        {
+            key_t idx = value.first;
+            bool is_new = _bump( value.first );
+            if ( is_new )
+                _container[ idx ] = value.second;
+            return { iterator( idx, _container.begin() + idx ), is_new };
+        }
+
+        std::pair< iterator, bool > emplace( key_t idx, val_t val )
+        {
+            return insert( std::make_pair( idx, val ) );
+        }
+
+        void erase( iterator pos ) { pos->second = val_t(); }
+        void erase( key_t key ) { _container[ key ] = val_t(); }
+
+        size_type count( key_t key ) const { return size_t( key ) < size(); }
+        iterator find( key_t k ) { return count( k ) ? begin() + k : end(); }
+        const_iterator find( key_t k ) const { return count( k ) ? cbegin() + k : end(); }
+
+        bool operator<( const dense_map &o ) const { return _container < o._container; }
+        bool operator==( const dense_map &o ) const { return _container == o._container; }
+    };
+
 }
 
 namespace t_brq
@@ -328,6 +419,22 @@ namespace t_brq
             ASSERT( m != m2 );
             ASSERT( m <= m2 );
             ASSERT( m < m2 );
+        }
+    };
+
+    struct dense_map
+    {
+        using m = brq::dense_map< int, char >;
+
+        TEST( basic )
+        {
+            m map;
+            map[ 3 ] = 'c';
+            ASSERT_EQ( map.count( 3 ), 1 );
+            ASSERT_EQ( map[ 3 ], 'c' );
+            map[ 1 ] = 'a';
+            ASSERT_EQ( map.count( 1 ), 1 );
+            ASSERT_EQ( map[ 1 ], 'a' );
         }
     };
 
