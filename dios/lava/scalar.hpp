@@ -5,44 +5,34 @@
 #include <rst/constant.hpp>
 #include <rst/base.hpp>
 
-namespace __dios::rst::abstract {
-
+namespace __dios::rst::abstract
+{
     // c++ wrapper for scalar domains
 
     template< typename domain_t, bool _signed = false, bool floating = false >
-    struct scalar_t
+    struct scalar
     {
         static_assert( !(floating && !_signed) && "unsigned floats are not permitted" );
 
-        abstract_value_t _value;
+        domain_t _value;
 
-        _LART_INLINE
-        scalar_t( void * ptr ) : _value( static_cast< abstract_value_t >( ptr ) ) {}
+        scalar( domain_t val ) : _value( val ) {}
+        operator domain_t() { return _value; }
+        operator domain_t() const { return _value; }
 
-        _LART_INLINE
-        scalar_t( domain_t val ) : _value( static_cast< abstract_value_t >( val ) ) {}
-
-        _LART_INLINE
-        operator domain_t() { return domain_t{ _value }; }
-
-        _LART_INLINE
-        operator domain_t() const { return domain_t{ _value }; }
-
-        _LART_INLINE
-        operator bool() {
-            if ( is_constant( domain( _value ) ) )
-                return constant_t::to_tristate( _value );
-
-            auto res = domain_t::to_tristate( *this );
-            domain_t::assume( *this, *this, res );
-            return res;
-        }
-
-        operator abstract_value_t() noexcept
+        operator bool()
         {
-            return static_cast< abstract_value_t >( _value );
-        }
+            switch ( domain_t::to_tristate( *this ) )
+            {
+                case tristate_t::True: return true;
+                case tristate_t::False: return false;
+            }
 
+            bool rv = __vm_choose( 2 );
+            domain_t::assume( *this, *this, rv );
+            return rv;
+        }
+#if 0
         template< template< typename, typename > class operation >
         _LART_INLINE static scalar_t binary_op( scalar_t l, scalar_t r ) noexcept
         {
@@ -74,7 +64,23 @@ namespace __dios::rst::abstract {
         {
             return domain_t::lift( val );
         }
+#endif
 
+        using dom = domain_t;
+
+        static constexpr auto bv_div = _signed ? dom::op_sdiv : dom::op_udiv;
+        static constexpr auto bv_rem = _signed ? dom::op_srem : dom::op_urem;
+
+        static constexpr auto add = floating ? dom::op_fadd : dom::op_add;
+        static constexpr auto sub = floating ? dom::op_fsub : dom::op_sub;
+        static constexpr auto div = floating ? dom::op_fdiv : bv_div;
+        static constexpr auto rem = floating ? dom::op_frem : bv_rem;
+
+        scalar operator+( scalar o ) const noexcept { return add( *this, o ); }
+        scalar operator-( scalar o ) const noexcept { return sub( *this, o ); }
+        scalar operator/( scalar o ) const noexcept { return div( *this, o ); }
+        scalar operator%( scalar o ) const noexcept { return rem( *this, o ); }
+#if 0
         template< template< typename > class operation >
         inline static constexpr bool is_in_domain = is_detected_v< operation, domain_t >;
 
@@ -244,9 +250,6 @@ namespace __dios::rst::abstract {
         icmp_operation( ge, >= )
         icmp_operation( lt, < )
         icmp_operation( le, <= )
-
-        /* cast operations */
-
+#endif
     };
-
-} // namespace __dios::rst::abstract
+}
