@@ -23,7 +23,7 @@
 #include "tristate.hpp"
 #include <util/map.hpp>
 
-#include <brick-smt>
+#include <brick-nusmt>
 #include <type_traits>
 
 namespace __lava
