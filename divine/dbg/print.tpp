@@ -121,11 +121,15 @@ std::string Print< Ctx >::instruction( int padding, int colmax )
         llvm::CallSite cs( I );
 
         skipMask |= uint64_t( 1 ) << (argc - (cs.isCall() ? 1 : 3));
-        if ( auto *target = cs.getCalledFunction() ) {
+
+        if ( auto *target = cs.getCalledFunction() )
+        {
             auto tgt = target->getName().str();
             argcols = tgt.size() + 2;
             out << "@" << tgt << " ";
-        } else {
+        }
+        else
+        {
             auto *val = cs.getCalledValue();
             auto oname = value( val, DisplayVal::PreferName );
             argcols = oname.size() + 1;
@@ -135,7 +139,7 @@ std::string Print< Ctx >::instruction( int padding, int colmax )
 
     auto result = [&]( int col )
                   {
-                      while ( col < 60 )
+                      while ( col < colmax - 26 )
                           col ++, out << " ";
                       out << "# " << value( dbg.find( nullptr, eval.pc() ).first, DisplayVal::Value );
                   };
@@ -149,7 +153,7 @@ std::string Print< Ctx >::instruction( int padding, int colmax )
         auto oname = value( val, DisplayVal::PreferName );
 
         int cols = argalign + argcols + oname.size() + 1;
-        if ( ( printres && cols >= colmax - 20 ) || cols >= colmax )
+        if ( ( printres && cols >= colmax - 26 ) || cols >= colmax )
         {
             if ( printres )
                 printres = false, result( argalign + argcols );

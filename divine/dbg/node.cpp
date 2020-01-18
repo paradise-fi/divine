@@ -413,7 +413,7 @@ void Node< Prog, Heap >::attributes( YieldAttr yield )
 }
 
 template< typename Prog, typename Heap >
-void Node< Prog, Heap >::bitcode( std::ostream &out )
+void Node< Prog, Heap >::bitcode( std::ostream &out, int colmax )
 {
     if ( _kind != DNKind::Frame )
         throw brq::error( "cannot display bitcode, not a stack frame" );
@@ -435,7 +435,7 @@ void Node< Prog, Heap >::bitcode( std::ostream &out )
             out << print( eval ).value( iop->getParent() ) << ":" << std::endl;
         }
         else
-            out << "  " << print( eval ).instruction( 4 ) << std::endl;
+            out << "  " << print( eval ).instruction( 4, colmax ) << std::endl;
     }
     _ctx.set( _VM_CR_PC, origpc );
 }

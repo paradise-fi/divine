@@ -182,7 +182,7 @@ struct Node
     int width();
     int bitoffset();
 
-    void bitcode( std::ostream &out );
+    void bitcode( std::ostream &out, int colmax = 80 );
     void source( std::ostream &out, std::function< std::string( std::string ) > pp );
     void format( brq::string_builder &out, int depth = 1, int derefs = 0, int indent = 0 );
 
