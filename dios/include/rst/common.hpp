@@ -5,7 +5,6 @@
 
 #include <rst/lart.h>
 #include <util/array.hpp>
-#include <rst/tristate.hpp>
 
 #include <experimental/type_traits>
 
@@ -47,39 +46,6 @@ extern "C" bool __vm_test_taint_byte( bool (*tainted) ( bool, char val ), bool, 
 
 namespace __dios::rst::abstract {
 
-    namespace detail {
-        template < class Default, class AlwaysVoid,
-                   template< class... > class Op, class... Args >
-        struct detector {
-            using value_t = std::false_type;
-            using type = Default;
-        };
-
-        template < class Default, template< class... > class Op, class... Args >
-        struct detector< Default, std::void_t< Op< Args... > >, Op, Args... > {
-            using value_t = std::true_type;
-            using type = Op< Args... >;
-        };
-    } // namespace detail
-
-    struct Nonesuch {
-        ~Nonesuch() = delete;
-        Nonesuch( Nonesuch const& ) = delete;
-        void operator=( Nonesuch const& ) = delete;
-    };
-
-    template < template< class... > class Op, class... Args >
-    using is_detected = typename detail::detector< Nonesuch, void, Op, Args... >::value_t;
-
-    template< template< class... > class Op, class... Args >
-    inline constexpr bool is_detected_v = is_detected< Op, Args... >::value;
-
-    template < template< class... > class Op, class... Args >
-    using detected_t = typename detail::detector< Nonesuch, void, Op, Args... >::type;
-
-    template < typename T, int PT = _VM_PT_Heap >
-    using Array = __dios::Array< T, PT >;
-
     template< typename It >
     struct Range {
         using iterator = It;
@@ -102,12 +68,7 @@ namespace __dios::rst::abstract {
     _LART_INLINE
     static Range< It > range( It begin, It end ) noexcept { return Range< It >( begin, end ); }
 
-    template< typename T >
-    struct Abstracted { };
-
     static constexpr bool PointerBase = true;
-
-    using bitwidth_t = int8_t;
 
     template< typename T >
     _LART_INLINE T taint() noexcept
@@ -150,17 +111,10 @@ namespace __dios::rst::abstract {
     }
 
     template< typename concrete_t, typename abstract_t >
-    _LART_INLINE concrete_t stash_abstract_value( abstract_t value )
+    _LART_INLINE concrete_t stash_abstract_value( abstract_t &&value )
     {
-        using abstract_value_t = void *;
-        __lart_stash( static_cast< abstract_value_t >( value ) );
+        __lart_stash( value.disown() );
         return taint< concrete_t >();
-    }
-
-    template< typename concrete_t, typename abstract_t >
-    _LART_INLINE auto make_abstract() noexcept
-    {
-        return stash_abstract_value< concrete_t >( abstract_t::lift_any( Abstracted< concrete_t >{} ) );
     }
 
     template< typename concrete_t, typename abstract_t, typename ...args_t >
@@ -182,16 +136,6 @@ namespace __dios::rst::abstract {
             return abstract_t::lift_one_i16( c );
         if constexpr ( sizeof( concrete_t ) == 1 )
             return abstract_t::lift_one_i8( c );
-    }
-    template< typename abstract_t >
-    _LART_INLINE auto lift_one( float c ) noexcept { return abstract_t::lift_one_float( c ); }
-    template< typename abstract_t >
-    _LART_INLINE auto lift_one( double c ) noexcept { return abstract_t::lift_one_double( c ); }
-
-    template< typename concrete_t, typename abstract_t >
-    _LART_INLINE concrete_t make_abstract( concrete_t c ) noexcept
-    {
-        return stash_abstract_value< concrete_t >( lift_one< abstract_t >( c ) );
     }
 
     template< typename T >
@@ -306,83 +250,4 @@ namespace __dios::rst::abstract {
     {
         __dios_fault( _VM_Fault::_VM_F_Float, "division by zero" );
     }
-
-    template< typename T >
-    _LART_INLINE static constexpr bitwidth_t bitwidth() noexcept
-    {
-        return std::numeric_limits< T >::digits + std::numeric_limits< T >::is_signed;
-    }
-
-    namespace op {
-
-        template< typename T = void >
-        struct shift_left;
-
-        template< typename T >
-        struct shift_left
-        {
-          inline constexpr bool operator()( const T& x, const T& y ) const { return x << y; }
-        };
-
-        template<>
-        struct shift_left< void >
-        {
-            template < typename T, typename U >
-            inline constexpr auto operator()( T&& t, U&& u ) const
-                    noexcept( noexcept( std::forward< T >( t ) << std::forward< U >( u ) ) )
-                -> decltype( std::forward< T >( t ) << std::forward< U >( u ) )
-            { return std::forward< T >( t ) << std::forward< U >( u ); }
-
-            typedef void is_transparent;
-        };
-
-
-        template< typename T = void >
-        struct shift_right;
-
-        template< typename T >
-        struct shift_right
-        {
-          inline constexpr bool operator()( const T& x, const T& y ) const { return x >> y; }
-        };
-
-        template<>
-        struct shift_right< void >
-        {
-            template < typename T, typename U >
-            inline constexpr auto operator()( T&& t, U&& u ) const
-                    noexcept( noexcept( std::forward< T >( t ) >> std::forward< U >( u ) ) )
-                -> decltype( std::forward< T >( t ) >> std::forward< U >( u ) )
-            { return std::forward< T >( t ) >> std::forward< U >( u ); }
-
-            typedef void is_transparent;
-        };
-
-
-        template< typename T = void >
-        struct arithmetic_shift_right;
-
-        template< typename T >
-        struct arithmetic_shift_right
-        {
-          inline constexpr bool operator()( const T& x, const T& y ) const
-          {
-              return x >> y;
-          }
-        };
-
-        template<>
-        struct arithmetic_shift_right< void >
-        {
-            template < typename T, typename U >
-            inline constexpr auto operator()( T&& t, U&& u ) const
-                    noexcept( noexcept( std::forward< T >( t ) >> std::forward< U >( u ) ) )
-                -> decltype( std::forward< T >( t ) >> std::forward< U >( u ) )
-            { return std::forward< T >( t ) >> std::forward< U >( u ); }
-
-            typedef void is_transparent;
-        };
-
-    } // namespace op
-
 } // namespace __dios::rst::abstract
