@@ -9,90 +9,79 @@ namespace __lava
 {
     term_state_t * __term_state;
 
+    void update_rpns( brq::smt_varid_t old, brq::smt_varid_t new_ )
     {
-    auto update_rpns( smt::token::VarID id )
-    {
-        auto& dcmp = __term_state->decomp;
-        auto it = dcmp.find( id );
-        if( it != dcmp.end() )
+        auto &decomp = __term_state->decomp;
+
+        if ( old == new_ )
+            return;
+
+        if ( auto old_it = decomp.find( old ); old_it != decomp.end() )
         {
-            auto repr = *__term_state->uf.find( id );
-            if( repr != id )
+            if ( auto new_it = decomp.find( new_ ); new_it != decomp.end() )
             {
-                auto repr_it = dcmp.find( repr );
-                if( repr_it != dcmp.end() )
-                {
-                    repr_it->second.extend( it->second );
-                    repr_it->second.apply< smt::Op::Constraint >();
-                    __vm_obj_free( it->second.pointer );
-                    __vm_trace( _VM_T_Assume, repr_it->second.pointer );
-                }
-                else
-                {
-                    dcmp.emplace( repr, it->second );
-                    __vm_trace( _VM_T_Assume, ( dcmp.find( repr )->second ).pointer );
-                }
-                dcmp.erase( id );
+                new_it->second.apply( old_it->second, brq::smt_op::constraint );
+                __vm_trace( _VM_T_Assume, brq::bitcast< void * >( new_it->second ) );
             }
+            else
+            {
+                decomp.emplace( new_, old_it->second );
+                __vm_trace( _VM_T_Assume, brq::bitcast< void * >( decomp.find( new_ )->second ) );
+            }
+
+            decomp.erase( old_it );
         }
     }
 
-    template< typename T > using stack_t = Array< T >;
+    template< typename T > using stack_t = __dios::Array< T >;
 
     /* Add a constraint to the term. A constraint is again a term_t, e.g. a > 7.
      * !`expect` is for when an else branch was taken, in which case the tested
      * condition had to be false. */
-    term_t term_t::constrain( term_t &constraint, bool expect ) const noexcept
+    term term::assume( term t, term c, bool expect )
     {
         if ( !expect )
-        {
-            constraint = constraint.make_term( constraint );
-            constraint.apply< Op::Not >();
-        }
+            c = term( c, op::bv_not );
+        auto &decomp = __term_state->decomp;
 
-        auto append_term = [&]( term_state_t::var_id_t var )
+        auto append_term = [&]( brq::smt_varid_t var )
         {
-            auto it = __term_state->decomp.find( var );
-            if ( it == __term_state->decomp.end() )
-                __term_state->decomp.emplace( var, constraint );
+            if ( auto it = decomp.find( var ); it != decomp.end() )
+                it->second.apply( c, brq::smt_op::bool_and );
             else
-            {
-                it->second.extend( constraint );
-                __vm_obj_free( constraint.pointer );
-                it->second.apply< Op::And >();
-            }
+                decomp.emplace( var, c );
         };
 
-        auto id = brick::smt::decompose< stack_t >( constraint.as_rpn(), __term_state->uf, update_rpns );
+        auto id = brq::smt_decompose< stack_t >( c, __term_state->uf, update_rpns );
+
         if ( !id )
-            __vm_trace( _VM_T_Assume, constraint.pointer );
+            __vm_trace( _VM_T_Assume, brq::bitcast< void * >( c ) );
         else  // append to relevant decomp
         {
-            append_term( *id );
-            __vm_trace( _VM_T_Assume, ((*__term_state->decomp.find( *id )).second).pointer );
+            append_term( id );
+            __vm_trace( _VM_T_Assume, brq::bitcast< void * >( decomp.find( id )->second ) );
         }
 
-        return *this;
+        return t;
     }
 
 }
 
 void *__dios_term_init()
 {
-    using namespace __dios::rst::abstract;
-    auto true_term = term_t::lift_one_i1( true );
+    using namespace __lava;
+    auto true_term = term::lift_i1( true );
     __term_state = static_cast< term_state_t * >( __vm_obj_make( sizeof( term_state_t ), _VM_PT_Heap ) );
     new ( __term_state ) term_state_t;
     __term_state->uf.make_set( 0 );
     __term_state->decomp[ 0 ] = true_term;
     return __term_state->decomp._container._data;
+    return nullptr;
 }
 
 extern "C" __invisible void __dios_term_fini()
 {
-    using namespace __dios::rst::abstract;
-    for ( auto [ key, term ] : __term_state->decomp )
-        __vm_obj_free( term.pointer );
+    using namespace __lava;
     __term_state->decomp.clear();
     __term_state->uf.clear();
     __vm_obj_free( __term_state );
