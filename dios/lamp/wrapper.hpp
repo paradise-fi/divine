@@ -61,14 +61,14 @@ auto wrap( const args_t & ... args ) { return wrapper::wrap( args... ); }
 
 extern "C"
 {
-    export ptr __lamp_lift_i1( i1 v )     { return wrap( dom::lift_one_i1,  v ); }
-    export ptr __lamp_lift_i8( i8 v )     { return wrap( dom::lift_one_i8,  v ); }
-    export ptr __lamp_lift_i16( i16 v )   { return wrap( dom::lift_one_i16, v ); }
-    export ptr __lamp_lift_i32( i32 v )   { return wrap( dom::lift_one_i32, v ); }
-    export ptr __lamp_lift_i64( i64 v )   { return wrap( dom::lift_one_i64, v ); }
-    export ptr __lamp_lift_f32( f32 v )   { return wrap( dom::lift_one_f64, v ); }
-    export ptr __lamp_lift_f64( f64 v )   { return wrap( dom::lift_one_f64, v ); }
-    export ptr __lamp_lift_ptr( void *v ) { return wrap( dom::lift_one_ptr, v ); }
+    export ptr __lamp_lift_i1( i1 v )     { return wrap( dom::lift_i1,  v ); }
+    export ptr __lamp_lift_i8( i8 v )     { return wrap( dom::lift_i8,  v ); }
+    export ptr __lamp_lift_i16( i16 v )   { return wrap( dom::lift_i16, v ); }
+    export ptr __lamp_lift_i32( i32 v )   { return wrap( dom::lift_i32, v ); }
+    export ptr __lamp_lift_i64( i64 v )   { return wrap( dom::lift_i64, v ); }
+    export ptr __lamp_lift_f32( f32 v )   { return wrap( dom::lift_f64, v ); }
+    export ptr __lamp_lift_f64( f64 v )   { return wrap( dom::lift_f64, v ); }
+    export ptr __lamp_lift_ptr( void *v ) { return wrap( dom::lift_ptr, v ); }
 
     /* TODO freeze, melt */
 
