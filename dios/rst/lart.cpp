@@ -2,7 +2,6 @@
 #include <sys/task.h>
 
 #include <rst/common.hpp>
-#include <rst/constant.hpp>
 
 #include <string.h>
 
@@ -31,12 +30,12 @@ extern "C"
         return rv;
     }
 
-    _LART_INTERFACE void __lart_stash( void * val )
+    _LART_INTERFACE void __lart_stash( void *val )
     {
         __dios_this_task()->__rst_stash = val;
     }
 
-    _LART_INTERFACE void __lart_freeze( void * value, void * addr )
+    _LART_INTERFACE void __lart_freeze( void *value, void * addr )
     {
         poke_object( value, addr );
     }
@@ -92,6 +91,7 @@ struct argument_t { bool tainted; concrete_t concrete; abstract_t abstract; };
 template< typename concrete_t >
 argument_t( bool b, concrete_t c, abstract_t a ) -> argument_t< concrete_t >;
 
+#if 0
 template< typename value_t >
 _LART_INLINE
 value_t __lart_load_lifter_impl( abstract_t addr )
@@ -231,3 +231,4 @@ extern "C" {
     LART_INT_TO_FP( float, float )
     LART_INT_TO_FP( double, double )
 }
+#endif
