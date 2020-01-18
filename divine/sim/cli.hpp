@@ -103,12 +103,14 @@ struct CLI
 
     std::map< std::string, cmd_tokens > _info_cmd;
     std::map< std::string, brick::proc::XTerm > _xterms;
-    std::ostream *_stream;
+    std::ostream *_stream = &std::cerr;
     std::ostream &out() { return *_stream; }
+    int out_fd = 2;
 
     void command( cmd_tokens cmd );
     void command_raw( cmd_tokens cmd );
     char *prompt() { return _prompt; }
+    int columns();
 
     RefLocation location( vm::CodePointer pc )
     {
@@ -162,7 +164,7 @@ struct CLI
     CLI( BC bc )
         : _exit( false ), _batch( false ), _bc( bc ), _explore( bc ), _sticky_tid( -1, 0 ),
           _sched_random( false ), _ctx( _bc->program(), _bc->debug() ),
-          _state_count( 0 ), _stream( &std::cerr )
+          _state_count( 0 )
     {
         _ctx.set_pool( _explore.pool() );
         _ctx._lock_mode = Context::LockScheduler;
@@ -237,7 +239,11 @@ struct CLI
         if ( !tfl.output_to.empty() )
         {
             if ( _xterms.count( tfl.output_to ) )
-                _stream = &_xterms[ tfl.output_to ].stream();
+            {
+                auto &term = _xterms[ tfl.output_to ];
+                _stream = &term.stream();
+                out_fd = term.fd();
+            }
             else
                 out() << "ERROR: no xterm named " << tfl.output_to << " found!";
         }

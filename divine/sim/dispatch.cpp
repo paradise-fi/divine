@@ -20,6 +20,7 @@
 #include <divine/dbg/dot.hpp>
 #include <divine/sim/cli.hpp>
 #include <brick-proc>
+#include <sys/ioctl.h>
 
 namespace divine::sim
 {
@@ -288,6 +289,14 @@ void CLI::go( command::thread thr )
     }
 }
 
+int CLI::columns()
+{
+    struct winsize ws;
+    if ( !isatty( out_fd ) || ioctl( out_fd, TIOCGWINSZ, &ws ) == -1 )
+        return 80;
+    return ws.ws_col;
+}
+
 void CLI::go( command::bitcode bc )
 {
     if ( !bc.filename.empty() )
@@ -300,7 +309,8 @@ void CLI::go( command::bitcode bc )
         }
         return;
     }
-    get( bc.var ).bitcode( out() ); out() << std::flush;
+
+    get( bc.var ).bitcode( out(), columns() ); out() << std::flush;
 }
 
 void CLI::go( command::source src )

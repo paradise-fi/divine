@@ -45,6 +45,7 @@ namespace divine::sim
                 *_stream << "sticky command failed: " << e.what() << std::endl;
             }
             _stream = &std::cerr;
+            out_fd = 2;
         }
     }
 

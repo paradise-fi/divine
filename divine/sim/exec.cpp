@@ -45,6 +45,7 @@ Stepper CLI::stepper()
     step._ff_components = _ff_components;
     step._callback = [this]() { sched_policy(); return true; };
     step._yield_state = [this]( auto snap ) { return newstate( snap ); };
+    step._columns = columns();
     return step;
 }
 
