@@ -1,0 +1,426 @@
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2019 Petr Ročkai <code@fixp.eu>
+ * (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
+
+#include "brick-assert"
+#include "brick-bitlevel"
+#include <functional>
+
+namespace brq
+{
+    enum smt_op_type { smt_op_var, smt_op_const, smt_op_cast, smt_op_other };
+
+    struct smt_traits_t
+    {
+        int arity;
+        int imm_bytes;
+        int bitwidth;
+        smt_op_type type;
+
+        constexpr bool is_var()   { return type == smt_op_var; }
+        constexpr bool is_const() { return type == smt_op_const; }
+        constexpr bool is_cast()  { return type == smt_op_cast; }
+
+        const char *name;
+        constexpr smt_traits_t( const char *n, int ar, int imm = 0, int bw = 0,
+                                smt_op_type t = smt_op_other )
+            : arity( ar ), imm_bytes( imm ), bitwidth( bw ), type( t ), name( n ) {}
+    };
+
+    enum class smt_op : uint8_t
+    {
+        invalid, eq, neq,
+        var_bool, var_i8, var_i16, var_i32, var_i64, var_f32, var_f64,
+        const_bool, const_i8, const_i16, const_i32, const_i64, const_f32, const_f64,
+        bv_not, bv_neg,
+        bv_sext, bv_zext, bv_trunc, bv_zfit, bv_stofp, bv_utofp,
+        fp_ext, fp_trunc, fp_tosbv, fp_toubv,
+        bool_and, bool_or, bool_xor, bool_imply,
+        bv_and, bv_or, bv_xor,
+        bv_add, bv_sub, bv_mul, bv_udiv, bv_sdiv, bv_urem, bv_srem,
+        bv_shl, bv_lshr, bv_ashr,
+        bv_ule, bv_ult, bv_uge, bv_ugt, bv_sle, bv_slt, bv_sge, bv_sgt,
+        fp_add, fp_sub, fp_mul, fp_div, fp_rem,
+        fp_false, fp_oeq, fp_ogt, fp_oge, fp_olt, fp_ole, /* fp_one, */ fp_ord,
+        fp_true,  fp_ueq, fp_ugt, fp_uge, fp_ult, fp_ule, /* fp_une, */ fp_uno,
+        bv_extract, bv_concat,
+        constraint
+    };
+
+    using smt_varid_t = uint16_t;
+
+    constexpr smt_traits_t smt_traits( smt_op v )
+    {
+        using op = smt_op;
+
+        switch ( v )
+        {
+            case op::invalid:   return { "invalid",  0, 0,  0 };
+
+            case op::eq:        return { "=",  2 };
+            case op::neq:       return { "!=", 2 };
+
+            case op::var_bool:  return { "var_bool", 0, 2,  1, smt_op_var };
+            case op::var_i8:    return { "var_i8",   0, 2,  8, smt_op_var };
+            case op::var_i16:   return { "var_i16",  0, 2, 16, smt_op_var };
+            case op::var_i32:   return { "var_i32",  0, 2, 32, smt_op_var };
+            case op::var_i64:   return { "var_i64",  0, 2, 64, smt_op_var };
+            case op::var_f32:   return { "var_f32",  0, 2, 32, smt_op_var };
+            case op::var_f64:   return { "var_f64",  0, 2, 32, smt_op_var };
+
+            case op::const_bool: return { "const_bool", 0, 1,  1, smt_op_const };
+            case op::const_i8:   return { "const_i8",   0, 1,  8, smt_op_const };
+            case op::const_i16:  return { "const_i16",  0, 2, 16, smt_op_const };
+            case op::const_i32:  return { "const_i32",  0, 4, 32, smt_op_const };
+            case op::const_i64:  return { "const_i64",  0, 8, 64, smt_op_const };
+            case op::const_f32:  return { "const_f32",  0, 4, 32, smt_op_const };
+            case op::const_f64:  return { "const_f64",  0, 8, 64, smt_op_const };
+
+            case op::bv_not:     return { "bvnot", 1 };
+            case op::bv_neg:     return { "bvneg", 1 };
+
+            case op::bv_sext:    return { "sext",     1, 1, 0, smt_op_cast };
+            case op::bv_zext:    return { "zext",     1, 1, 0, smt_op_cast };
+            case op::bv_zfit:    return { "zfit",     1, 1, 0, smt_op_cast };
+            case op::bv_trunc:   return { "trunc",    1, 1, 0, smt_op_cast };
+            case op::bv_stofp:   return { "sinttofp", 1, 1, 0, smt_op_cast };
+            case op::bv_utofp:   return { "uinttofp", 1, 1, 0, smt_op_cast };
+            case op::fp_trunc:   return { "fptrunc",  1, 1, 0, smt_op_cast };
+            case op::fp_ext:     return { "fpext",    1, 1, 0, smt_op_cast };
+            case op::fp_tosbv:   return { "fptosint", 1, 1, 0, smt_op_cast };
+            case op::fp_toubv:   return { "fptouint", 1, 1, 0, smt_op_cast };
+
+            case op::bool_and:   return { "and",  2, 0, 1 };
+            case op::bool_or:    return { "or",   2, 0, 1 };
+            case op::bool_xor:   return { "xor",  2, 0, 1 };
+            case op::bool_imply: return { "=>",   2, 0, 1 };
+
+            case op::bv_and:     return { "bvand",  2 };
+            case op::bv_or:      return { "bvor",   2 };
+            case op::bv_xor:     return { "bvxor",  2 };
+            case op::bv_add:     return { "bvadd",  2 };
+            case op::bv_sub:     return { "bvsub",  2 };
+            case op::bv_mul:     return { "bvmul",  2 };
+            case op::bv_udiv:    return { "bvudiv", 2 };
+            case op::bv_sdiv:    return { "bvsdiv", 2 };
+            case op::bv_urem:    return { "bvurem", 2 };
+            case op::bv_srem:    return { "bvsrem", 2 };
+            case op::bv_shl:     return { "bvshl",  2 };
+            case op::bv_lshr:    return { "bvlshr", 2 };
+            case op::bv_ashr:    return { "bvashr", 2 };
+
+            case op::bv_ule:     return { "bvule", 2, 0, 1 };
+            case op::bv_ult:     return { "bvult", 2, 0, 1 };
+            case op::bv_uge:     return { "bvuge", 2, 0, 1 };
+            case op::bv_ugt:     return { "bvugt", 2, 0, 1 };
+            case op::bv_sle:     return { "bvsle", 2, 0, 1 };
+            case op::bv_slt:     return { "bvslt", 2, 0, 1 };
+            case op::bv_sge:     return { "bvsge", 2, 0, 1 };
+            case op::bv_sgt:     return { "bvsgt", 2, 0, 1 };
+
+            case op::fp_add:     return { "fp.add", 2 };
+            case op::fp_sub:     return { "fp.sub", 2 };
+            case op::fp_mul:     return { "fp.mul", 2 };
+            case op::fp_div:     return { "fp.div", 2 };
+            case op::fp_rem:     return { "fp.rem", 2 };
+
+            case op::fp_true:    return { "fp.true",  2, 0, 1 };
+            case op::fp_false:   return { "fp.false", 2, 0, 1 };
+            case op::fp_ord:     return { "fp.ord",   2, 0, 1 };
+            case op::fp_uno:     return { "fp.uno",   2, 0, 1 };
+            case op::fp_oeq:     return { "fp.oeq",   2, 0, 1 };
+            case op::fp_ueq:     return { "fp.ueq",   2, 0, 1 };
+
+            case op::fp_ule:     return { "fp.ule",   2, 0, 1 };
+            case op::fp_ult:     return { "fp.ult",   2, 0, 1 };
+            case op::fp_uge:     return { "fp.uge",   2, 0, 1 };
+            case op::fp_ugt:     return { "fp.egt",   2, 0, 1 };
+            case op::fp_ole:     return { "fp.sle",   2, 0, 1 };
+            case op::fp_olt:     return { "fp.slt",   2, 0, 1 };
+            case op::fp_oge:     return { "fp.sge",   2, 0, 1 };
+            case op::fp_ogt:     return { "fp.sgt",   2, 0, 1 };
+
+            case op::bv_extract: return { "extract", 1, 2 };
+            case op::bv_concat:  return { "concat",  2, 0 };
+            case op::constraint: return { "constraint", 2 };
+        }
+
+        return { "invalid",  0, 0,  0 };
+    }
+
+    template< smt_op_type t, int bw, smt_op id = smt_op::invalid >
+    constexpr smt_op smt_match_op_f()
+    {
+        if constexpr ( smt_traits( id ).type == t && smt_traits( id ).bitwidth == bw )
+            return id;
+        else
+            return smt_match_op_f< t, bw, smt_op( int( id ) + 1 ) >();
+    }
+
+    template< smt_op_type t, int bw >
+    constexpr smt_op smt_match_op = smt_match_op_f< t, bw >();
+
+    constexpr const char *smt_name( smt_op op ) { return smt_traits( op ).name; }
+    constexpr int         smt_bw( smt_op op )   { return smt_traits( op ).bitwidth; }
+    constexpr int         smt_imm( smt_op op )  { return smt_traits( op ).imm_bytes; }
+
+    template< typename imm_t, int storage = storage_size< imm_t >() >
+    struct smt_atom_t
+    {
+        smt_op  op;
+        uint8_t _imm[ storage ];
+
+        template< typename init_t >
+        smt_atom_t( smt_op op, init_t init,
+                    std::enable_if_t< std::is_convertible_v< init_t, imm_t >, bool > = false )
+            : op( op )
+        {
+            if constexpr ( std::is_convertible_v< init_t, smt_varid_t > )
+            {
+                if ( smt_traits( op ).is_var() )
+                    imm_set( smt_varid_t( init ) );
+            }
+            else
+            {
+                ASSERT( !smt_traits( op ).is_var() );
+                imm_set( init );
+            }
+        }
+
+        smt_atom_t( smt_op op ) : op( op ) {}
+        smt_atom_t( const smt_atom_t & ) = delete;
+        smt_atom_t( smt_atom_t && ) = delete;
+        smt_atom_t &operator=( uint8_t op_ ) { op = smt_op( op_ ); }
+
+        template< typename T >
+        void copy_from( const smt_atom_t< T > &o )
+        {
+            memcpy( this, &o, o.size() );
+        }
+
+        int arity() const { return smt_traits( op ).arity; }
+        size_t size() const { return 1 + smt_imm( op ); }
+        size_t imm_size() const { return smt_imm( op ); }
+        smt_varid_t varid() const { return smt_traits( op ).is_var() ? imm_get< smt_varid_t >() : 0; }
+
+        template< typename T > void imm_get( T &i ) const { bitcast_mem( _imm, i ); }
+        template< typename T >    T imm_get() const { T i; imm_get( i ); return i; }
+        template< typename T > void imm_set( T i )
+        {
+            ASSERT_EQ( sizeof( i ), smt_imm( op ) );
+            memcpy( _imm, &i, sizeof( i ) );
+        }
+
+        template< typename stream >
+        friend auto operator<<( stream &o, const smt_atom_t &a ) -> decltype( o << "" )
+        {
+            o << smt_name( a.op );
+            switch ( a.imm_size() )
+            {
+                case 2: return o << " " << a.imm_get< int16_t >();
+                default: return o;
+            }
+        }
+    };
+
+    using smt_atom = smt_atom_t< void >;
+    static_assert( sizeof( smt_atom ) == 1 );
+
+    template< template< typename... > class container_t, typename... container_args_t >
+    struct smt_expr : container_t< uint8_t, container_args_t... >
+    {
+        using base = container_t< uint8_t, container_args_t... >;
+        using typename base::size_type;
+        using typename base::difference_type;
+        using value_type = smt_atom;
+        using reference = smt_atom &;
+        using const_reference = const smt_atom &;
+
+        template< typename val_t >
+        struct proxy
+        {
+            val_t &_ref;
+            proxy( val_t &r ) : _ref( r ) {}
+            auto operator->() { return &_ref; }
+        };
+
+        template< typename base_t, typename val_t >
+        struct iterator_t
+        {
+            base_t base;
+            iterator_t( base_t b ) : base( b ) {}
+            iterator_t &operator++() { base += ( *this )->size(); return *this; }
+            iterator_t operator++( int ) { auto rv = *this; ++*this; return rv; }
+            val_t &operator*() { return *reinterpret_cast< val_t * >( &*base ); }
+            proxy< val_t > operator->() { return { **this }; }
+            bool operator==( iterator_t o ) const { return base == o.base; }
+            bool operator!=( iterator_t o ) const { return base != o.base; }
+        };
+
+        using const_iterator = iterator_t< typename base::const_iterator, const smt_atom >;
+        using iterator       = iterator_t< typename base::iterator, smt_atom >;
+
+        template< typename... args_t >
+        smt_expr( args_t && ... args ) : base( std::forward< args_t >( args ) ... ) {}
+
+        iterator       begin()        { return base::begin(); }
+        const_iterator begin()  const { return base::begin(); }
+        const_iterator cbegin() const { return base::begin(); }
+        iterator       end()          { return base::end(); }
+        const_iterator end()    const { return base::end(); }
+        const_iterator cend()   const { return base::end(); }
+
+        iterator last( int off ) { return std::prev( end(), off + 1 ); }
+
+        void apply() {}
+        void apply( smt_op v ) { base::push_back( uint8_t( v ) ); }
+
+        template< typename imm_t >
+        void apply( const smt_atom_t< imm_t > &v )
+        {
+            base::resize( base::size() + v.size() );
+            iterator it = base::end() - v.size();
+            it->copy_from( v );
+        }
+
+        void apply( const smt_expr &e )
+        {
+            base::resize( base::size() + e.base::size() );
+            iterator it = base::end() - e.base::size();
+            std::copy( e.base::begin(), e.base::end(), it );
+        }
+
+        template< typename arg1_t, typename arg2_t, typename... args_t >
+        void apply( const arg1_t &arg_1, const arg2_t &arg_2, const args_t & ... args )
+        {
+            apply( arg_1 );
+            apply( arg_2 );
+            ( apply( args ) , ... );
+        }
+    };
+
+    template < typename container_t >
+    struct union_find
+    {
+        using key_t = typename container_t::key_type;
+        static_assert( std::is_same_v< key_t, typename container_t::mapped_type > );
+
+        container_t _map;
+        void clear() { _map.clear(); }
+
+        key_t make_set( key_t x )
+        {
+            if ( auto r = _map[ x ] )
+                return r;
+            else
+                return _map[ x ] = x;
+        }
+
+        key_t find( key_t x )
+        {
+            ASSERT( x );
+
+            key_t y = _map[ x ];
+
+            while ( y && x != y )
+            {
+                x = y;
+                y = _map[ x ] = _map[ y ];
+            }
+
+            return y;
+        }
+
+        void join( key_t x, key_t y ) /* x always becomes the representant */
+        {
+            ASSERT_EQ( x, find( x ) );
+            ASSERT_EQ( y, find( y ) );
+
+            _map[ y ] = x;
+        }
+    };
+
+    template< template< typename > class stack_t, typename expr_t, typename M,
+              typename F = std::function< void ( smt_varid_t, smt_varid_t ) > >
+    smt_varid_t smt_decompose( const expr_t &expr, union_find< M > &uf,
+                               F f = []( smt_varid_t, smt_varid_t ) {} )
+    {
+        stack_t< smt_varid_t > stack;
+
+        auto make = [&]( smt_varid_t v ) { return v ? uf.make_set( v ) : 0; };
+        auto find = [&]( smt_varid_t v ) { return v ? uf.find( v ) : 0; };
+        auto pop = [&]() { auto rv = stack.back(); stack.pop_back(); return rv; };
+        auto join = [&]( auto & )
+        {
+            auto a_ = pop(), b_ = pop();
+            auto a = find( a_ ), b = find( b_ );
+
+            if ( a != b && a && b )
+            {
+                uf.join( a, b );
+                f( b, a );
+            }
+
+            stack.push_back( a ? a : b );
+        };
+
+        for ( auto &atom : expr )
+        {
+            if ( atom.arity() == 2 )
+                join( atom );
+            if ( atom.arity() == 0 )
+                stack.push_back( make( atom.varid() ) );
+            if ( atom.arity() > 2 )
+                NOT_IMPLEMENTED();
+        }
+
+        ASSERT_EQ( stack.size(), 1 );
+
+        return stack.back();
+    }
+}
+
+#include <map>
+
+namespace t_brq::smt
+{
+    struct uf
+    {
+        TEST( parity )
+        {
+            brq::union_find< std::map< int, int > > uf;
+
+            int even = uf.make_set( 2 ), odd = uf.make_set( 1 );
+
+            for ( int i : { 2, 4, 5, 7, 9, 6, 1, -2, -9 } )
+            {
+                if ( i % 2 == 0 )
+                    uf.join( even, uf.make_set( i ) );
+                else
+                    uf.join( odd, uf.make_set( i ) );
+            }
+
+            for ( int i : { 2, 4, 5, 7, 9, 6, 1, -2, -9 } )
+                ASSERT_EQ( std::abs( i % 2 ), uf.find( i ) % 2 );
+        }
+    };
+}
+
+// vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
