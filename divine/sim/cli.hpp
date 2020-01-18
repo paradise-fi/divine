@@ -108,6 +108,8 @@ struct CLI
     std::ostream &out() { return *_stream; }
     int out_fd = 2;
 
+    void out( std::ostream &stream, int fd ) { _stream = &stream; out_fd = fd; }
+
     void command( cmd_tokens cmd );
     void command_raw( cmd_tokens cmd );
     char *prompt() { return _prompt; }
@@ -242,8 +244,7 @@ struct CLI
             if ( _xterms.count( tfl.output_to ) )
             {
                 auto &term = _xterms[ tfl.output_to ];
-                _stream = &term.stream();
-                out_fd = term.fd();
+                out( term.stream(), term.fd() );
             }
             else
                 out() << "ERROR: no xterm named " << tfl.output_to << " found!";

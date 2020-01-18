@@ -44,8 +44,7 @@ namespace divine::sim
             {
                 *_stream << "sticky command failed: " << e.what() << std::endl;
             }
-            _stream = &std::cerr;
-            out_fd = 2;
+            out( std::cerr, 2 );
         }
     }
 
@@ -54,7 +53,7 @@ void CLI::command( cmd_tokens tok )
     auto cmd = parse( tok );
     cmd.match( [&] ( brq::cmd_help h ) { h.run(); },
                [&] ( auto opt ) { prepare( opt ); go( opt ); finalize( opt ); } );
-    _stream = &std::cerr; /* always revert to the main output */
+    out( std::cerr, 2 ); /* always revert to the main output */
 }
 
 void CLI::command_raw( cmd_tokens tok )
