@@ -27,6 +27,13 @@ struct Array : brq::derive_ord, brq::derive_eq
     using reference = T&;
     using const_reference = T const&;
 
+    /* Allow construction of multiple array instances that point to the same
+     * memory. Objects constructed in this manner must never be destroyed but
+     * must be disowned instead. */
+
+    struct construct_shared_t {};
+    static constexpr construct_shared_t construct_shared;
+
     static constexpr bool nothrow_dtor = std::is_nothrow_destructible_v< T >;
     static constexpr bool nothrow_copy = std::is_nothrow_copy_constructible_v< T >;
     static constexpr bool nothrow_move = std::is_nothrow_move_constructible_v< T >;
@@ -34,6 +41,14 @@ struct Array : brq::derive_ord, brq::derive_eq
 
     Array() noexcept = default;
     ~Array() noexcept( nothrow_dtor ) { clear(); }
+
+    Array( const Array &other, construct_shared_t ) noexcept
+        : _data( other._data )
+    {}
+
+    Array( void *ptr, construct_shared_t ) noexcept
+        : _data( static_cast< _Item * >( ptr ) )
+    {}
 
     Array( const Array& other ) noexcept ( nothrow_copy )
         : Array( other.size(), other.begin(), other.end() )
@@ -62,6 +77,8 @@ struct Array : brq::derive_ord, brq::derive_eq
         swap( other );
         return *this;
     };
+
+    void *disown() { void *rv = begin(); _data = nullptr; return rv; }
 
     template< typename It >
     void assign( size_type size, It b, It e ) noexcept ( nothrow_copy )
