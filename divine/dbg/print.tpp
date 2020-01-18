@@ -111,6 +111,8 @@ std::string Print< Ctx >::instruction( int padding, int colmax )
     int argc = I->getNumOperands();
     if ( insn.opcode == lx::OpDbg && insn.subcode != lx::DbgBitCast )
         argc = 0;
+    if ( insn.opcode == lx::OpHypercall )
+        argc -= 1;
 
     int argalign = out.str().size() + padding, argcols = 0;
 
