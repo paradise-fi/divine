@@ -280,15 +280,7 @@ namespace __lava
         {
             __dios_trace_f( "%s%d", msg, ptr->value );
         };
+    };
 
-    } __attribute__((packed));
-
-    static_assert( sizeof( constant_t ) == 11 );
-
-    _LART_INLINE
-    static bool is_constant( uint8_t domain ) noexcept
-    {
-        return is_domain< constant_t >( domain );
-    }
-
-} // namespace __dios::rst::abstract
+    static_assert( sizeof( constant ) == 8 );
+}
