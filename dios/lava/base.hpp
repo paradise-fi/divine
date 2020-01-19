@@ -37,18 +37,7 @@ namespace __lava
     template< pointer_type PT = _VM_PT_Heap >
     struct tagged_array : array< PT >
     {
-        // Placeholder constructor for LART to initialize domain index
-        _LART_NOINLINE tagged_abstract_domain_t( base_id_t id = 0 ) noexcept
-            : _id( id )
-        {}
-
-        base_id_t _id;
-    };
-
-    template< _VM_PointerType PT = _VM_PT_Heap >
-    struct tagged_array : Array< uint8_t, PT >
-    {
-        using base = Array< uint8_t, PT >;
+        using base = array< PT >;
         using typename base::iterator;
 
         template< typename F >
