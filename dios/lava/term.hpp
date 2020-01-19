@@ -89,84 +89,10 @@ namespace __lava
                 fault = _VM_Fault::_VM_F_Float;
             }
 
-        /* abstraction operations */
-        __lift( i1, bool )
-        __lift( i8, uint8_t )
-        __lift( i16, uint16_t )
-        __lift( i32, uint32_t )
-        __lift( i64, uint64_t )
+            auto eq = op_eq( op_zext( divisor, 64 ), lift( 0ul ) );
 
-        __lift( float, float )
-        __lift( double, double )
-
-        _LART_INTERFACE
-        static term_t lift_any_aggr( unsigned size ) noexcept { return {}; }
-        _LART_INTERFACE
-        static term_t lift_one_aggr( void * aggr, unsigned size ) noexcept { return {}; }
-
-        _LART_INTERFACE
-        static term_t lift_one_ptr( void *p ) noexcept
-        {
-            return lift( reinterpret_cast< uintptr_t >( p ) );
-        }
-
-        _LART_INTERFACE
-        static tristate_t to_tristate( term_t ) noexcept
-        {
-            return { tristate_t::Unknown };
-        }
-
-        _LART_INLINE
-        static constexpr bool faultable( Op op ) noexcept
-        {
-            using namespace brick::smt;
-            return is_one_of< Op::BvUDiv
-                            , Op::BvSDiv
-                            , Op::BvURem
-                            , Op::BvSRem
-                            , Op::FpDiv
-                            , Op::FpRem >( op );
-        }
-
-        template< Op op, typename ...T >
-        _LART_INLINE static term_t impl_nary( T ...terms )
-        {
-            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
-            new ( ptr ) tagged_abstract_domain_t();
-            term_t term{ ptr };
-
-            return apply_impl< op >( term, terms...);
-        }
-
-        template< Op op, typename H, typename ...T >
-        _LART_INLINE static term_t apply_impl( term_t term, H h, T ...terms )
-        {
-            return apply_impl< op, T...>( term.extend( h ), terms... );
-        }
-
-        template< Op op >
-        _LART_INLINE static term_t apply_impl( term_t term )
-        {
-            return term.apply< op >();
-        }
-
-        template< Op op >
-        _LART_INLINE static term_t impl_binary( term_t lhs, term_t rhs ) noexcept
-        {
-            // resulting rpn: [ lhs | rhs | op ]
-
-            auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
-            new ( ptr ) tagged_abstract_domain_t();
-            term_t term{ ptr };
-
-            return term.extend( lhs ).extend( rhs ).apply< op >();
-        }
-
-        template< Op op >
-        _LART_INLINE static term_t fault_i_bin( term_t lhs, term_t rhs ) noexcept
-        {
-            auto eq = op_eq( op_zext( rhs, 64 ), lift_one_i64( 0 ) );
-            if ( to_tristate( eq ) ) {
+            if ( to_tristate( eq ) )
+            {
                 assume( eq, eq, true );
                 __dios_fault( fault, "division by zero" );
                 return b;
@@ -275,23 +201,7 @@ namespace __lava
     };
 
     extern term_state_t *__term_state;
-
-    template< typename T >
-    _LART_INTERFACE RPN::Variable variable() noexcept
-    {
-        return { RPN::var< T >(), __term_state->counter++ };
-    }
-
-    template< typename T >
-    _LART_INTERFACE term_t term_t::lift_any( Abstracted< T > ) noexcept
-    {
-        auto ptr = __vm_obj_make( sizeof( base_id_t ), _VM_PT_Marked );
-        new ( ptr ) tagged_abstract_domain_t();
-        term_t term{ ptr };
-        return term.extend( variable< T >() );
-    }
-
-    static_assert( sizeof( term_t ) == 8 );
+    static_assert( sizeof( term ) == 8 );
 }
 
 extern "C" void *__dios_term_init();
