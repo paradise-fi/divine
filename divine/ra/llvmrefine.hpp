@@ -131,10 +131,8 @@ struct llvm_refinement : refinement_t
     refiner_t _refiner;
 
     llvm_refinement( const BCOptions &bc_opts )
-        : refinement_t(bc_opts), _refiner( *_m )
-    {
-        _refiner.init();
-    }
+        : refinement_t( bc_opts ), _refiner( *_m )
+    {}
 
     bool iterate( uint64_t n )
     {
@@ -153,11 +151,50 @@ struct llvm_refinement : refinement_t
         auto [ result, bc ] = this->run();
         if ( result->result() == mc::Result::Valid )
             return true;
-        _refiner.enhance( get_ce_t< refiner_t >::get_ce( _refiner, *result, bc.get() ) ) ;
+        ce_t ce( *result, bc.get() );
+        _refiner.enhance( ce );
         return false;
     }
 };
 
-using indirect_calls_refinement_t = llvm_refinement< lart::divine::IndirectCallsStubber >;
+struct remove_indirect_calls
+{
+    lart::divine::IndirectCallsStubber llvm_pass;
+
+    remove_indirect_calls( llvm::Module &m ) : llvm_pass( m )
+    {
+        llvm_pass.stub();
+    }
+
+    void enhance( ce_t &counter_example )
+    {
+        std::optional< std::pair< llvm::Function *, llvm::Function * > > target;
+        auto gather = [ & ]( auto frame, auto &heap, auto &info )
+        {
+            if ( target ) return;
+
+            vm::PointerV current_pc;
+            heap.read_shift( frame, current_pc );
+            auto where = info.function( current_pc.cooked() );
+
+            if ( !llvm_pass.isWrapper( where ) ) return;
+
+            vm::PointerV first_arg;
+
+            // Get rid of the parent frame first
+            heap.read_shift( frame, first_arg );
+            heap.read_shift( frame, first_arg );
+            target = { where, info.function( first_arg.cooked() ) };
+        };
+
+        counter_example.stack_trace( gather );
+        ASSERT( target );
+
+        auto [ where, callee ] = *target;
+        llvm_pass.enhance( where, callee );
+    }
+};
+
+using indirect_calls_refinement_t = llvm_refinement< remove_indirect_calls >;
 
 } // namespace divine::ra
