@@ -82,22 +82,33 @@ struct ce_t
     stack_trace_t stack_trace()
     {
         stack_trace_t out;
+        auto gather = [ & ]( auto frame, auto &heap, auto &info ) {
+            vm::PointerV current_pc;
+            heap.read_shift( frame, current_pc );
+            auto [ inst, pc ] = info.find( nullptr, current_pc.cooked() );
+            out.push_back( inst );
+        };
+        stack_trace( gather );
+        return out;
+    }
+
+    template< typename Yield >
+    void stack_trace( Yield &&yield )
+    {
         auto &heap = dbg_ctx.heap();
 
-        vm::PointerV current_pc;
-        vm::PointerV current_parent;
 
         vm::PointerV iter_frame( dbg_ctx.frame() );
+        vm::PointerV parent;
 
         while ( !iter_frame.cooked().null() )
         {
-            heap.read_shift( iter_frame, current_pc );
-            auto [ inst, pc ] = info.find( nullptr, current_pc.cooked() );
-            out.push_back( inst );
-            heap.read_shift( iter_frame, current_parent );
-            iter_frame = current_parent;
+            yield( iter_frame, heap, info );
+            // First entry of frame is program counter
+            heap.read_shift( iter_frame, parent );
+            heap.read_shift( iter_frame, parent );
+            iter_frame = parent;
         }
-        return out;
     }
 
     template< typename Stream >
