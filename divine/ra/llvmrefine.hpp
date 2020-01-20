@@ -38,12 +38,22 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine::ra {
 
-struct get_ce_t_
+struct ce_t
 {
     using stack_trace_t = std::vector< llvm::Instruction * >;
+    using dbg_ctx_t = dbg::Context< vm::CowHeap >;
 
-    template< typename Ctx >
-    void static create_ctx( Ctx &dbg_ctx, mc::Job &job)
+    dbg::Info info;
+    dbg_ctx_t dbg_ctx;
+
+    ce_t( mc::Job &job, mc::BitCode *bc )
+        : info( *bc->_program, *bc->_module ),
+          dbg_ctx( bc->program(), bc->debug() )
+    {
+        _create_ctx( dbg_ctx, job );
+    }
+
+    void _create_ctx( dbg_ctx_t &dbg_ctx, mc::Job &job )
     {
         auto trace = job.ce_trace();
 
@@ -57,9 +67,9 @@ struct get_ce_t_
         dbg_ctx.load( trace.final );
 
         dbg_ctx._lock = trace.steps.back();
-        dbg_ctx._lock_mode = Ctx::LockBoth;
+        dbg_ctx._lock_mode = dbg_ctx_t::LockBoth;
         vm::setup::scheduler( dbg_ctx );
-        using Stepper = dbg::Stepper< Ctx >;
+        using Stepper = dbg::Stepper< dbg_ctx_t >;
         Stepper step;
         step._stop_on_error = true;
         step._stop_on_accept = true;
@@ -69,17 +79,7 @@ struct get_ce_t_
         return std::move( dbg_ctx );
     }
 
-    static stack_trace_t stack_trace( mc::Job &job, mc::BitCode *bc )
-    {
-        dbg::Info info( *bc->_program, *bc->_module );
-        dbg::Context< vm::CowHeap > dbg_ctx( bc->program(), bc->debug() );
-        create_ctx( dbg_ctx, job );
-        return stack_trace( dbg_ctx, info );
-    }
-
-
-    template< typename dbg_ctx_t >
-    static stack_trace_t stack_trace( dbg_ctx_t &dbg_ctx, dbg::Info &info )
+    stack_trace_t stack_trace()
     {
         stack_trace_t out;
         auto &heap = dbg_ctx.heap();
