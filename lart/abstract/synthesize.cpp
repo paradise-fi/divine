@@ -85,27 +85,14 @@ namespace lart::abstract
             Argument abstract;
         };
 
-        template<typename IRB, typename Index, typename Domain >
-        auto get_function_from_domain( IRB &irb, Index op, Domain dom ) const
+        auto get_function_from_domain() const
         {
-            auto table = module->getNamedGlobal( vtable );
-            auto domain = irb.CreateZExt( dom, i32Ty() );
-            auto o = irb.CreateGEP( table, { i64( 0 ), domain, op } );
-            return  irb.CreateLoad( o );
-        }
+            if constexpr ( Taint::toBool( T ) )
+                return module->getFunction( "__lame_to_tristate" );
+            if constexpr ( Taint::assume( T ) )
+                return module->getFunction( "__lame_assume" );
 
-        template< typename IRB >
-        auto get_function_from_domain( IRB &irb ) const
-        {
-            auto index = [&] {
-                if constexpr ( Taint::toBool( T ) )
-                    return meta::operation_index( module->getFunction( "__lart_abstract_to_tristate" ) );
-                else if constexpr ( Taint::assume( T ) )
-                    return meta::operation_index( module->getFunction( "__lart_abstract_assume" ) );
-                else
-                    return meta::operation_index( lifter_function() );
-            } ();
-            return get_function_from_domain( irb, index, domain );
+            return lifter_function();
         }
 
         template< typename IRB >
@@ -292,7 +279,7 @@ namespace lart::abstract
 
             domain = domain_index( val, irb );
 
-            auto ptr = get_function_from_domain( irb );
+            auto ptr = get_function_from_domain();
             auto trty = lower->getFunctionType()->getParamType( 0 );
             auto fty = llvm::FunctionType::get( trty, { val->getType() }, false );
             auto to_tristate = irb.CreateBitCast( ptr, fty->getPointerTo() );
@@ -462,7 +449,7 @@ namespace lart::abstract
         template< typename builder_t >
         auto call_lifter( builder_t &irb )
         {
-            auto ptr = get_function_from_domain( irb );
+            auto ptr = get_function_from_domain();
             auto rty = Taint::faultable( T ) ? i8PTy() : lifter_function()->getReturnType();
             auto fty = llvm::FunctionType::get( rty, types_of( args ), false );
             auto op = irb.CreateBitCast( ptr, fty->getPointerTo() );
@@ -580,9 +567,7 @@ namespace lart::abstract
             auto impl = module->getFunction( name );
             if ( !impl )
                 brq::raise() << "Missing domain function " << name;
-            auto op = meta::operation_index( impl );
-            auto ptr = get_function_from_domain( irb, op, dom );
-            return irb.CreateBitCast( ptr, fty->getPointerTo() );
+            return irb.CreateBitCast( impl, fty->getPointerTo() );
         }
 
         template< typename IRB >

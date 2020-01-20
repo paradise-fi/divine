@@ -50,7 +50,6 @@ namespace lart::abstract::meta
         {
             constexpr const char function[] = "lart.op.function";
             constexpr const char type[] = "lart.op.type";
-            constexpr const char index[] = "lart.op.index";
 
             constexpr const char freeze[] = "lart.op.freeze";
             constexpr const char thaw[] = "lart.op.thaw";
@@ -188,23 +187,4 @@ namespace lart::abstract::meta
             .map( query::llvmdyncast< I > )
             .freeze();
     }
-
-    template< typename Tag >
-    inline llvm::ConstantInt * llvm_index( llvm::Function * fn, const Tag & tag )
-    {
-        using namespace lart::abstract;
-
-        auto i = fn->getMetadata( tag );
-        if ( !i )
-            brq::raise() << "Missing index metadata. " << tag << " " << fn->getName().str();
-        auto c = llvm::cast< llvm::ConstantAsMetadata >( i->getOperand( 0 ) );
-        return llvm::cast< llvm::ConstantInt >( c->getValue() );
-    }
-
-    inline llvm::ConstantInt * operation_index( llvm::Function * fn )
-    {
-        using namespace lart::abstract;
-        return llvm_index( fn, meta::tag::operation::index );
-    }
-
-} // namespace lart::abstract::meta
+}

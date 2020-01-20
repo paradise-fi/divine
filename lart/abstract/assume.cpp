@@ -62,12 +62,7 @@ namespace {
             llvm::IRBuilder<> irb( &*edgebb->getFirstInsertionPt() );
 
             OperationBuilder builder;
-
-            auto op = builder.construct< Operation::Type::Assume >( cond, irb );
-
-            auto abs = cond->getModule()->getFunction( "__lart_abstract_assume" );
-            auto tag = meta::tag::operation::index;
-            op.inst->setMetadata( tag, abs->getMetadata( tag ) );
+            builder.construct< Operation::Type::Assume >( cond, irb );
 
             // Correct phis after edge splitting
             replace_phis_incoming_bbs( to, from, edgebb );

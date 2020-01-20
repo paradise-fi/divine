@@ -337,19 +337,14 @@ namespace lart::abstract
             return DomainKind::scalar;
         }
 
-        void add_meta( llvm::Instruction *val, const std::string &operation, DomainKind kind )
+        void add_meta( llvm::Instruction *val, const std::string &, DomainKind kind )
         {
             auto type = _types.get( val );
+
             if ( kind == DomainKind::pointer && !type.back().is_abstract )
                 return;
 
             meta::abstract::set( val, to_string( kind ) );
-            auto m = val->getModule();
-            if ( auto op = m->getFunction( operation ) )
-            {
-                auto index = op->getMetadata( meta::tag::operation::index );
-                val->setMetadata( meta::tag::operation::index, index );
-            }
         }
 
         void visitStoreInst( llvm::StoreInst &store )

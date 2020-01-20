@@ -283,7 +283,7 @@ namespace lart::abstract
             if ( auto tag = meta::abstract::get( inst ) )
                 return is_memory_operation( tag );
 
-        return ( llvm::CallSite( inst ) && inst->getMetadata( meta::tag::operation::index ) );
+        return !!llvm::CallSite( inst );
     }
 
     template< typename Call >

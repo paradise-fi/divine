@@ -20,16 +20,12 @@ namespace lart::abstract
             .filter( query::notnull )
             .filter( match ).freeze();
 
-        auto tag = meta::tag::operation::index;
-        auto index = m.getFunction( "__lart_abstract_to_tristate" )->getMetadata( tag );
-
         OperationBuilder builder;
         for ( auto * br : brs )
         {
             auto cond = llvm::cast< llvm::Instruction >( br->getCondition() );
             auto abs = cond->getNextNonDebugInstruction();
             auto op = builder.construct< Operation::Type::ToBool >( abs );
-            op.inst->setMetadata( tag, index );
             br->setCondition( op.inst );
         }
     }

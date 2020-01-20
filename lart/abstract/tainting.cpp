@@ -458,7 +458,6 @@ namespace lart::abstract {
             auto call = llvm::IRBuilder<>( placeholder ).CreateCall( fn, args );
             auto mat = Taint( call, T, true );
 
-            inherit_index( mat, op );
             rematch( mat, op );
 
             return mat;
@@ -490,21 +489,6 @@ namespace lart::abstract {
 
             if ( !ph.inst->getType()->isVoidTy() )
                 ph.inst->replaceAllUsesWith( lif );
-        }
-
-        template< typename Lifter, typename Placeholder >
-        void inherit_index( Lifter lifter, Placeholder ph )
-        {
-            if constexpr ( Taint::assume( T ) || Taint::toBool( T ) )
-                return;
-
-            // set operation index
-            auto con = llvm::cast< llvm::Instruction >( concrete( ph.inst ) );
-
-            auto tag = meta::tag::operation::index;
-            lifter.inst->setMetadata( tag, con->getMetadata( tag ) );
-
-            lifter.function()->setMetadata( tag, con->getMetadata( tag ) );
         }
 
         auto concrete( llvm::Value * val )
