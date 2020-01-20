@@ -40,6 +40,8 @@ namespace divine::ra {
 
 struct get_ce_t_
 {
+    using stack_trace_t = std::vector< llvm::Instruction * >;
+
     template< typename Ctx >
     void static create_ctx( Ctx &dbg_ctx, mc::Job &job)
     {
@@ -65,6 +67,47 @@ struct get_ce_t_
         step.run( dbg_ctx, Stepper::Quiet );
 
         return std::move( dbg_ctx );
+    }
+
+    static stack_trace_t stack_trace( mc::Job &job, mc::BitCode *bc )
+    {
+        dbg::Info info( *bc->_program, *bc->_module );
+        dbg::Context< vm::CowHeap > dbg_ctx( bc->program(), bc->debug() );
+        create_ctx( dbg_ctx, job );
+        return stack_trace( dbg_ctx, info );
+    }
+
+
+    template< typename dbg_ctx_t >
+    static stack_trace_t stack_trace( dbg_ctx_t &dbg_ctx, dbg::Info &info )
+    {
+        stack_trace_t out;
+        auto &heap = dbg_ctx.heap();
+
+        vm::PointerV current_pc;
+        vm::PointerV current_parent;
+
+        vm::PointerV iter_frame( dbg_ctx.frame() );
+
+        while ( !iter_frame.cooked().null() )
+        {
+            heap.read_shift( iter_frame, current_pc );
+            auto [ inst, pc ] = info.find( nullptr, current_pc.cooked() );
+            out.push_back( inst );
+            heap.read_shift( iter_frame, current_parent );
+            iter_frame = current_parent;
+        }
+        return out;
+    }
+
+    template< typename Stream >
+    static Stream &trace( Stream &os, const stack_trace_t& stack_trace )
+    {
+        os << "Stack trace:" << std::endl;
+        for ( auto frame : stack_trace )
+            os << "\t" << ( frame ? frame->getFunction()->getName().str() : "nullptr" )
+               << std::endl;
+        return os;
     }
 };
 
