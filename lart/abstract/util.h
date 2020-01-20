@@ -254,7 +254,9 @@ namespace lart::abstract
     static bool is_faultable( llvm::Instruction * inst ) noexcept
     {
         using Inst = llvm::Instruction;
-        if ( auto bin = llvm::dyn_cast< llvm::BinaryOperator >( inst ) ) {
+
+        if ( auto bin = llvm::dyn_cast< llvm::BinaryOperator >( inst ) )
+        {
             auto op = bin->getOpcode();
             return op == Inst::UDiv ||
                    op == Inst::SDiv ||
@@ -264,7 +266,8 @@ namespace lart::abstract
                    op == Inst::FRem;
         }
 
-        auto is_memory_operation = [] ( const auto & tag ) {
+        auto is_memory_operation = [] ( const auto & tag )
+        {
             return ( tag == "aggregate" ) || ( tag == "pointer" );
         };
 

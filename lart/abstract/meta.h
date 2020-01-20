@@ -12,19 +12,24 @@ DIVINE_UNRELAX_WARNINGS
 #include <optional>
 #include <lart/support/query.h>
 
-namespace lart::abstract::meta {
-    namespace tag {
+namespace lart::abstract::meta
+{
+    namespace tag
+    {
         constexpr char abstract[] = "lart.abstract"; // TODO change to return
         constexpr char roots[] = "lart.abstract.roots";
 
-        namespace function {
+        namespace function
+        {
             constexpr char arguments[] = "lart.abstract.function.arguments";
         }
 
-        namespace transform {
+        namespace transform
+        {
             constexpr char prefix[] = "lart.transform";
 
-            namespace ignore {
+            namespace ignore
+            {
                 constexpr char ret[] = "lart.transform.ignore.ret";
                 constexpr char arg[] = "lart.transform.ignore.arg";
             } // namespace ignore
@@ -34,13 +39,15 @@ namespace lart::abstract::meta {
 
         constexpr char domains[]  = "lart.abstract.domains";
 
-        namespace domain {
+        namespace domain
+        {
             constexpr char spec[] = "lart.abstract.domain.spec";
             constexpr char name[] = "lart.abstract.domain.name";
             constexpr char kind[] = "lart.abstract.domain.kind";
         }
 
-        namespace operation {
+        namespace operation
+        {
             constexpr const char function[] = "lart.op.function";
             constexpr const char type[] = "lart.op.type";
             constexpr const char index[] = "lart.op.index";

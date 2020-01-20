@@ -343,7 +343,8 @@ namespace lart::abstract {
             auto call = llvm::cast< llvm::CallInst >( i->getOperand( 0 ) );
 
             Values args;
-            for ( const auto & use : call->arg_operands() ) {
+            for ( const auto & use : call->arg_operands() )
+            {
                 auto arg = use.get();
                 args.push_back( arg );
                 args.push_back( abstract( arg ) );
@@ -441,6 +442,8 @@ namespace lart::abstract {
             auto rty = return_type( placeholder );
             auto tys = types_of( args );
 
+            /* construct a name by which we call the __vm_test_taint hypercall
+             * (since it is polymorphic but LLVM functions have fixed types) */
             auto name = Taint::prefix + "." + abstract_name( op );
 
             auto fn = get_function( name, rty, tys );
@@ -466,16 +469,17 @@ namespace lart::abstract {
             if constexpr ( !Taint::toBool( T ) )
             {
                 auto con = llvm::cast< llvm::Instruction >( concrete( ph.inst ) );
-                if ( is_faultable( con ) ) {
+                if ( is_faultable( con ) )
+                {
                     _matched.concrete[ abstract( con ) ] = lif;
                     _matched.abstract[ lif ] = abstract( con );
                     _matched.abstract.erase( con );
                     if ( !con->getType()->isVoidTy() )
                         con->replaceAllUsesWith( lif );
                     con->eraseFromParent();
-                } else {
-                    _matched.match( T, lif, con );
                 }
+                else
+                    _matched.match( T, lif, con );
             }
 
             if ( !ph.inst->getType()->isVoidTy() )

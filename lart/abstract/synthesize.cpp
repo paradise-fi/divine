@@ -204,7 +204,8 @@ namespace lart::abstract
             /* pick correct arguments */
             irb.SetInsertPoint( exit );
 
-            auto merge = [&] ( auto args ) {
+            auto merge = [&] ( auto args )
+            {
                 auto arg = irb.CreatePHI( i8PTy(), 3 );
                 auto phi = llvm::cast< llvm::PHINode >( arg );
                 for ( const auto &[bb, d] : args )
@@ -430,10 +431,13 @@ namespace lart::abstract
                 return { fork, join };
             };
 
-            if ( paired.size() > 1 ) {
+            if ( paired.size() > 1 )
+            {
                 auto last = &lifter->getEntryBlock();
                 auto exit = basic_block( lifter, "exit" );
-                for ( const auto &arg : paired ) {
+
+                for ( const auto &arg : paired )
+                {
                     auto [brbb, mbb] = lift_arg( arg );
                     irb.SetInsertPoint( last );
                     irb.CreateBr( brbb );
@@ -444,9 +448,9 @@ namespace lart::abstract
                 irb.SetInsertPoint( last );
                 irb.CreateBr( exit );
                 irb.SetInsertPoint( exit );
-            } else {
-                args.push_back( paired.front().abstract.value );
             }
+            else
+                args.push_back( paired.front().abstract.value );
 
             auto call = call_lifter( irb );
             return_from_lifter( irb, call );
