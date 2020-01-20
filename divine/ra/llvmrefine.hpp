@@ -122,56 +122,6 @@ struct ce_t
     }
 };
 
-template< typename refiner_t >
-struct get_ce_t : get_ce_t_ {};
-
-template<>
-struct get_ce_t< lart::divine::IndirectCallsStubber > : get_ce_t_
-{
-    using refiner_t = lart::divine::IndirectCallsStubber;
-
-    auto static get_ce(refiner_t& stabber,
-                       mc::Job &job, mc::BitCode *bc )
-    -> std::pair< llvm::Function *, llvm::Function *>
-    {
-
-        dbg::Info info( *bc->_program, *bc->_module );
-
-        dbg::Context< vm::CowHeap > dbg( bc->program(), bc->debug() );
-        //InitializeContext( dbg, job );
-        get_ce_t_::create_ctx( dbg, job );
-        auto &heap = dbg.heap();
-
-        vm::PointerV current_pc;
-        vm::PointerV current_parent;
-
-        // TODO: Check that it is not an error in the program but truly in our
-        // indirection wrapper
-        vm::PointerV iter_frame( dbg.frame() );
-
-        while ( !iter_frame.cooked().null() ) {
-            heap.read_shift( iter_frame, current_pc );
-
-            auto where = info.function( current_pc.cooked() );
-
-            heap.read_shift( iter_frame, current_parent );
-
-            if ( stabber.isWrapper( where ) ) {
-
-                vm::PointerV first_arg;
-                heap.read_shift( iter_frame, first_arg );
-
-                return { where, info.function( first_arg.cooked() ) };
-            }
-
-            iter_frame = current_parent;
-
-        }
-
-        return { nullptr, nullptr };
-    }
-};
-
 // TODO: Maybe let refiner_t be mixin?
 template< typename refiner_t >
 struct llvm_refinement : refinement_t
