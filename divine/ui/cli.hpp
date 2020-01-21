@@ -206,6 +206,8 @@ namespace divine::ui
             return _bc;
         }
 
+        std::shared_ptr< mc::BitCode > take_bc() { return std::move( _bc ); }
+
         void options( brq::cmd_options &c ) override
         {
             command::options( c );
@@ -418,6 +420,26 @@ namespace divine::ui
             c.section( "Draw Options" );
             c.opt( "--distance", _distance ) << "maximum distance from the initial state [32]";
             c.opt( "--render", _render ) << "command to pipe the 'dot' output into [dot -Tx11]";
+        }
+    };
+
+    struct refine : with_bc
+    {
+        std::string _output_bc;
+        std::string _refinement;
+
+        void setup() override;
+        void run() override;
+        void rewire_calls();
+        bool is_valid();
+
+        void options( brq::cmd_options &c ) override
+        {
+            with_bc::options( c );
+            c.section( "Refinement" );
+            c.opt( "--output-bc", _output_bc ) << "store refined bitcode into a file";
+            c.opt( "--refinement", _refinement )
+                << "specify which refinement use, current options: [rewirecalls]";
         }
     };
 

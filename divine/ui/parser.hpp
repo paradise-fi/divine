@@ -51,7 +51,8 @@ struct CLI : Interface
     template< typename... extra_cmds >
     auto parse()
     {
-        return _parser.parse< verify, check, exec, sim, draw, info, cc, version, ltlc, extra_cmds... >();
+        return _parser.parse< verify, check, exec, sim, draw, info, cc,
+                              version, ltlc, refine, extra_cmds... >();
     }
 
     std::shared_ptr< Interface > resolve() override
