@@ -34,7 +34,7 @@ DIVINE_RELAX_WARNINGS
 #include <llvm/IR/LLVMContext.h>
 DIVINE_UNRELAX_WARNINGS
 
-#include <lart/divine/indirectionstubber.h>
+#include <lart/divine/rewirecalls.h>
 
 namespace divine::ra {
 
@@ -159,11 +159,11 @@ struct llvm_refinement : refinement_t
 
 struct remove_indirect_calls
 {
-    lart::divine::IndirectCallsStubber llvm_pass;
+    lart::divine::rewire_calls_t llvm_pass;
 
     remove_indirect_calls( llvm::Module &m ) : llvm_pass( m )
     {
-        llvm_pass.stub();
+        llvm_pass.init();
     }
 
     void enhance( ce_t &counter_example )
@@ -177,7 +177,7 @@ struct remove_indirect_calls
             heap.read_shift( frame, current_pc );
             auto where = info.function( current_pc.cooked() );
 
-            if ( !llvm_pass.isWrapper( where ) ) return;
+            if ( !llvm_pass.is_wrapper( where ) ) return;
 
             vm::PointerV first_arg;
 
