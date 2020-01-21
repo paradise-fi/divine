@@ -38,8 +38,8 @@ namespace divine::ra {
 struct _BitCode : divine::mc::BitCode
 {
     _BitCode( std::unique_ptr< llvm::Module > m,
-            std::shared_ptr< llvm::LLVMContext > ctx,
-            const divine::mc::BCOptions &opts)
+              std::shared_ptr< llvm::LLVMContext > ctx,
+              const divine::mc::BCOptions &opts)
     : BitCode( std::move( m ), ctx )
     {
         this->set_options( opts );
@@ -56,6 +56,14 @@ struct refinement_t
     // Order is important because of dtors
     std::shared_ptr< llvm::LLVMContext > _ctx = std::make_shared< llvm::LLVMContext >();
     std::unique_ptr< llvm::Module > _m;
+
+    refinement_t( std::shared_ptr< llvm::LLVMContext > ctx,
+                  std::unique_ptr< llvm::Module > m,
+                  const BCOptions &bc_opts )
+        : _ctx( std::move( ctx ) ),
+          _m ( std::move( m ) ),
+          _bc_opts( bc_opts )
+    {}
 
     refinement_t( const BCOptions &bc_opts ) : _bc_opts( bc_opts )
     {

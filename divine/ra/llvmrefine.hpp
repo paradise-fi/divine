@@ -130,6 +130,13 @@ struct llvm_refinement : refinement_t
 
     refiner_t _refiner;
 
+    llvm_refinement( std::shared_ptr< llvm::LLVMContext > ctx,
+                     std::unique_ptr< llvm::Module > m,
+                     const BCOptions &bc_opts )
+        : refinement_t( std::move( ctx ), std::move( m ), bc_opts ),
+         _refiner( *_m )
+    {}
+
     llvm_refinement( const BCOptions &bc_opts )
         : refinement_t( bc_opts ), _refiner( *_m )
     {}
