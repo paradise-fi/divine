@@ -62,9 +62,9 @@ toolchain_FLAGS += CMAKE_BUILD_TYPE=Release;TOOLCHAIN=ON; \
 all: $(DEFAULT_FLAVOUR)
 
 FLAVOURS = debug asan release semidbg static bench
-SPECIAL = divbench
+SPECIAL = divbench install
 NORMAL = divine unit functional website check llvm-utils clang \
-         install lart runner divcheck divcc dioscc manual \
+         lart runner divcheck divcc dioscc manual \
          test-divine test-lart test-bricks shoop
 TARGETS = $(NORMAL) $(SPECIAL)
 
@@ -160,10 +160,9 @@ validate:
 	$(OBJ)semidbg/divine/test-divine
 	$(MAKE) semidbg-functional TAGS=min F=vanilla,stp
 
-toolchain-install: toolchain
+install:
 	$(CMAKE) --build $(OBJ)toolchain --target install -- $(EXTRA)
-
-install: toolchain-install
+	$(MAKE) release-install USE_DIRENV=0
 
 prerequisites:
 	sh ./releng/install-prereq.sh
