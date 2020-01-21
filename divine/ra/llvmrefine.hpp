@@ -127,6 +127,8 @@ struct llvm_refinement : refinement_t
         _refiner.enhance( ce );
         return false;
     }
+
+    std::string report() { _refiner.report(); }
 };
 
 struct remove_indirect_calls
@@ -139,6 +141,8 @@ struct remove_indirect_calls
     }
 
     void enhance( ce_t &counter_example );
+
+    std::string report() { return llvm_pass.report(); }
 };
 
 using indirect_calls_refinement_t = llvm_refinement< remove_indirect_calls >;
