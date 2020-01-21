@@ -36,6 +36,13 @@ cantbuild()
     echo "Build failed. Stopping here."
 }
 
+cantinstall()
+{
+    make install 2>&1 || true # dump the failing stuff into the report
+    echo
+    echo "Install failed. Stopping here."
+}
+
 failed()
 {
     failsubj="failed "
@@ -115,6 +122,11 @@ fi
 
 cp report.txt doc/website/
 if egrep -q 'warnings|skipped' $list; then warnings >> report.txt; fi
+
+if ! make install; then
+    cantinstall >> report.txt
+    finished 1
+fi
 
 # everything looks good, push to current
 passed >> report.txt
