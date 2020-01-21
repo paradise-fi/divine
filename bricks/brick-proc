@@ -381,6 +381,7 @@ struct XTerm
         _d.stream.reset( new std::iostream( _d.buf.get() ) );
     }
 
+    int fd() { return _d.masterfd; }
     std::iostream &stream() { return *_d.stream; }
 
     XTerm() = default;
