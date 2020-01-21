@@ -161,6 +161,7 @@ void rewire_calls_t::init()
 
     auto wrap = [&]( auto &c ) {
         auto wrapper = this->_wrap( c->getCalledValue()->getType() );
+        _box_to_original_fn.insert( { wrapper, c->getFunction() } );
         create_call( c, wrapper );
     };
 

@@ -1,6 +1,6 @@
 #pragma once
 
-#include <iostream>
+#include <sstream>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -18,6 +18,8 @@ namespace lart::divine {
 
 // TODO: With LLVM-8.0 we will need to add CallBr at multiple places
 struct rewire_calls_t {
+    using rewired_to_t =
+        std::unordered_map< llvm::Function *, std::unordered_set< llvm::Function * > >;
 
     llvm::Module &_module;
     llvm::LLVMContext &_ctx;
@@ -28,7 +30,7 @@ struct rewire_calls_t {
     // Information needed to properly build whole if-else tree in new dispatcher
     struct switch_box {
         llvm::Function *where;
-        std::unordered_set< llvm::Function *> targets;
+        std::unordered_set< llvm::Function * > targets;
 
         // Last block, i.e. default case of switch, contains only unreachable instruction
         llvm::BasicBlock *tail;
@@ -36,6 +38,8 @@ struct rewire_calls_t {
 
     std::unordered_map< llvm::Function *, switch_box > _func2tail;
     std::unordered_set< std::string > _wrappers;
+
+    std::unordered_map< llvm::Function *, llvm::Function * > _box_to_original_fn;
 
     rewire_calls_t( llvm::Module &module )
         : _module( module ), _ctx( module.getContext() ) {}
@@ -62,6 +66,7 @@ struct rewire_calls_t {
     {
         ASSERT( _func2tail.count( where ),
             "Trying to enhance function that is not indirection.wrapper" );
+        _func2tail[ where ].targets.insert( target );
         _func2tail[ where ].tail = _create_case( where, target );
     }
 
@@ -88,6 +93,41 @@ struct rewire_calls_t {
         return func && is_wrapper( func->getName().str() );
     }
 
+    llvm::Function *where( llvm::Function *box )
+    {
+        auto original_it = _box_to_original_fn.find( box );
+        return ( original_it == _box_to_original_fn.end() ) ? nullptr : original_it->second;
+    }
+
+    rewired_to_t info()
+    {
+        rewired_to_t out;
+        for ( auto [ func, box ] : _func2tail )
+        {
+            auto where_f = where( func );
+            ASSERT( where_f );
+
+            std::unordered_set< llvm::Function * > targets;
+            for ( auto trg : box.targets )
+                targets.insert( trg );
+            out.insert( { where_f, std::move( targets ) } );
+        }
+        return out;
+    }
+
+    std::string report()
+    {
+        std::stringstream out;
+        for ( auto [ func, box ] : _func2tail )
+        {
+            auto where_f = where( func );
+            ASSERT( where_f );
+            out << where_f->getName().str() << std::endl;
+            for ( auto trg : box.targets )
+                out << "\t" << trg->getName().str() << std::endl;
+        }
+        return out.str();
+    }
 };
 
 static inline std::ostream &operator<<( std::ostream &os,
