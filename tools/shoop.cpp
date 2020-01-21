@@ -322,9 +322,11 @@ bool verify_function( llvm::Function &source_func, std::shared_ptr< llvm::LLVMCo
 
     // Now let's run Divine
     auto bc = std::make_shared< divine::mc::BitCode >( std::move( tested_mod ), ctx );
-    bc->dios_config( "static" );
 
-    bc->symbolic( true );
+    divine::mc::BCOptions opts;
+    opts.dios_config = "static";
+    opts.symbolic = true;
+    bc->set_options( opts );
     bc->solver( "stp" );
     bc->init();
 
@@ -356,7 +358,7 @@ bool verify_function( llvm::Function &source_func, std::shared_ptr< llvm::LLVMCo
         Stepper step;
         step._stop_on_error = true;
         step._stop_on_accept = true;
-        step._ff_components = divine::dbg::Component::Kernel;
+        step._ff_components = divine::dbg::component::kernel;
         step.run( dbg, Stepper::Quiet );
 
         log->backtrace( dbg, 10 ); // How detailed we want the log to be?
