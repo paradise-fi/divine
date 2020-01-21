@@ -21,11 +21,8 @@ void ce_t::_create_ctx( dbg_ctx_t &dbg_ctx, mc::Job &job )
 {
     auto trace = job.ce_trace();
 
-    if ( job.result() == mc::Result::BootError ) {
-        dbg::setup::boot( dbg_ctx );
-        trace.bootinfo = dbg_ctx._info;
-        trace.labels = dbg_ctx._trace;
-    }
+    if ( job.result() == mc::Result::BootError )
+        UNREACHABLE( "Refinement encountered an unexpected boot error." );
 
     job.dbg_fill( dbg_ctx );
     dbg_ctx.load( trace.final );
