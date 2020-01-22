@@ -86,6 +86,15 @@ namespace brq
         bitcast( f, t );
         return t;
     }
+
+    template< typename type >
+    constexpr size_t storage_size()
+    {
+        if constexpr ( std::is_same_v< type, void > )
+            return 0;
+        else
+            return std::is_empty_v< type > ? 0 : sizeof( type );
+    }
 }
 
 namespace brick::bitlevel
@@ -107,11 +116,6 @@ namespace brick::bitlevel
         template< typename T >
         constexpr T fill( T x ) {
             return x ? x | compiletime::fill( x >> 1 ) : x;
-        }
-
-        template< typename T >
-        constexpr size_t sizeOf() {
-            return std::is_empty< T >::value ? 0 : sizeof( T );
         }
 
         template< typename T >
