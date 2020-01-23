@@ -25,7 +25,8 @@
 
 namespace brq
 {
-    enum smt_op_type { smt_op_var, smt_op_const, smt_op_cast, smt_op_resize, smt_op_other };
+    enum smt_op_type { smt_op_var, smt_op_const, smt_op_cast, smt_op_resize, smt_op_compare,
+                       smt_op_other };
 
     struct smt_traits_t
     {
@@ -128,14 +129,14 @@ namespace brq
             case op::bv_lshr:    return { "bvlshr", 2 };
             case op::bv_ashr:    return { "bvashr", 2 };
 
-            case op::bv_ule:     return { "bvule", 2, 0, 1 };
-            case op::bv_ult:     return { "bvult", 2, 0, 1 };
-            case op::bv_uge:     return { "bvuge", 2, 0, 1 };
-            case op::bv_ugt:     return { "bvugt", 2, 0, 1 };
-            case op::bv_sle:     return { "bvsle", 2, 0, 1 };
-            case op::bv_slt:     return { "bvslt", 2, 0, 1 };
-            case op::bv_sge:     return { "bvsge", 2, 0, 1 };
-            case op::bv_sgt:     return { "bvsgt", 2, 0, 1 };
+            case op::bv_ule:     return { "bvule", 2, 0, 1, smt_op_compare };
+            case op::bv_ult:     return { "bvult", 2, 0, 1, smt_op_compare };
+            case op::bv_uge:     return { "bvuge", 2, 0, 1, smt_op_compare };
+            case op::bv_ugt:     return { "bvugt", 2, 0, 1, smt_op_compare };
+            case op::bv_sle:     return { "bvsle", 2, 0, 1, smt_op_compare };
+            case op::bv_slt:     return { "bvslt", 2, 0, 1, smt_op_compare };
+            case op::bv_sge:     return { "bvsge", 2, 0, 1, smt_op_compare };
+            case op::bv_sgt:     return { "bvsgt", 2, 0, 1, smt_op_compare };
 
             case op::fp_add:     return { "fp.add", 2 };
             case op::fp_sub:     return { "fp.sub", 2 };
