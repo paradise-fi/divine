@@ -25,7 +25,7 @@
 
 namespace brq
 {
-    enum smt_op_type { smt_op_var, smt_op_const, smt_op_cast, smt_op_other };
+    enum smt_op_type { smt_op_var, smt_op_const, smt_op_cast, smt_op_resize, smt_op_other };
 
     struct smt_traits_t
     {
@@ -34,9 +34,10 @@ namespace brq
         int bitwidth;
         smt_op_type type;
 
-        constexpr bool is_var()   { return type == smt_op_var; }
-        constexpr bool is_const() { return type == smt_op_const; }
-        constexpr bool is_cast()  { return type == smt_op_cast; }
+        constexpr bool is_var()    const { return type == smt_op_var; }
+        constexpr bool is_const()  const { return type == smt_op_const; }
+        constexpr bool is_cast()   const { return type == smt_op_cast; }
+        constexpr bool is_resize() const { return type == smt_op_resize; }
 
         const char *name;
         constexpr smt_traits_t( const char *n, int ar, int imm = 0, int bw = 0,
@@ -96,16 +97,17 @@ namespace brq
             case op::bv_not:     return { "bvnot", 1 };
             case op::bv_neg:     return { "bvneg", 1 };
 
-            case op::bv_sext:    return { "sext",     1, 1, 0, smt_op_cast };
-            case op::bv_zext:    return { "zext",     1, 1, 0, smt_op_cast };
-            case op::bv_zfit:    return { "zfit",     1, 1, 0, smt_op_cast };
-            case op::bv_trunc:   return { "trunc",    1, 1, 0, smt_op_cast };
-            case op::bv_stofp:   return { "sinttofp", 1, 1, 0, smt_op_cast };
-            case op::bv_utofp:   return { "uinttofp", 1, 1, 0, smt_op_cast };
-            case op::fp_trunc:   return { "fptrunc",  1, 1, 0, smt_op_cast };
-            case op::fp_ext:     return { "fpext",    1, 1, 0, smt_op_cast };
-            case op::fp_tosbv:   return { "fptosint", 1, 1, 0, smt_op_cast };
-            case op::fp_toubv:   return { "fptouint", 1, 1, 0, smt_op_cast };
+            case op::bv_sext:    return { "sext",     1, 1, 0, smt_op_resize };
+            case op::bv_zext:    return { "zext",     1, 1, 0, smt_op_resize };
+            case op::bv_zfit:    return { "zfit",     1, 1, 0, smt_op_resize };
+            case op::bv_trunc:   return { "trunc",    1, 1, 0, smt_op_resize };
+            case op::fp_trunc:   return { "fptrunc",  1, 1, 0, smt_op_resize };
+            case op::fp_ext:     return { "fpext",    1, 1, 0, smt_op_resize };
+
+            case op::bv_stofp:   return { "sinttofp", 0, 1, 0, smt_op_cast };
+            case op::bv_utofp:   return { "uinttofp", 0, 1, 0, smt_op_cast };
+            case op::fp_tosbv:   return { "fptosint", 0, 1, 0, smt_op_cast };
+            case op::fp_toubv:   return { "fptouint", 0, 1, 0, smt_op_cast };
 
             case op::bool_and:   return { "and",  2, 0, 1 };
             case op::bool_or:    return { "or",   2, 0, 1 };
