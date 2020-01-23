@@ -37,7 +37,7 @@
 #include <brick-assert>
 #include <brick-string>
 #include <brick-data>
-#include <brick-smt>
+#include <brick-nusmt>
 
 #include <map>
 #include <set>
@@ -50,37 +50,39 @@
 #include <unordered_set>
 #include <string_view>
 
-namespace brick::smt
+namespace brq
 {
-    using Format = std::function< void ( brq::string_builder & ) >;
-    struct Context;
+    using smtlib_format = std::function< void ( brq::string_builder & ) >;
+    struct smtlib_context;
 
-    struct Node /* A node in a tree representing a term. */
+    struct smtlib_node
     {
-        Format _fmt;
+        smtlib_format _fmt;
         int bw = 0;
-        Type type;
+        enum type_t { t_bool, t_bv, t_float } type;
 
-        Node( int bw, Type type, Format &&fmt ) :
-            _fmt( std::move( fmt ) ), bw( bw ), type( type )
+        smtlib_node( int bw, type_t type, smtlib_format &&fmt )
+            : _fmt( std::move( fmt ) ), bw( bw ), type( type )
         {}
 
-        Node( int bw, Type type, std::string str ) :
-            _fmt( [=]( brq::string_builder &o ) { o << str; } ), bw( bw ), type( type )
+        smtlib_node( int bw, type_t type, std::string str )
+            : _fmt( [=]( brq::string_builder &o ) { o << str; } ), bw( bw ), type( type )
         {}
 
-        constexpr inline bool is_bool() const noexcept { return type == Type::Bool; }
-        constexpr inline bool is_bv() const noexcept { return type == Type::Int; }
-        constexpr inline bool is_float() const noexcept { return type == Type::Float; }
+        constexpr inline bool is_bool() const noexcept { return type == t_bool; }
+        constexpr inline bool is_bv() const noexcept { return type == t_bv; }
+        constexpr inline bool is_float() const noexcept { return type == t_float; }
     };
 
-    static inline brq::string_builder &operator<<( brq::string_builder &o, const Node &n )
+    using smtlib_type = smtlib_node::type_t;
+
+    static inline brq::string_builder &operator<<( brq::string_builder &o, const smtlib_node &n )
     {
         n._fmt( o );
         return o;
     }
 
-    inline std::string to_string( const Node &p )
+    inline std::string to_string( const smtlib_node &p )
     {
         brq::string_builder ss;
         ss << p;
@@ -90,17 +92,18 @@ namespace brick::smt
             return ss.buffer();
     }
 
-    inline std::string to_string( Type type )
+    inline std::string to_string( smtlib_type type )
     {
-        switch ( type ) {
-            case Type::Bool: return "bool";
-            case Type::Int: return "int";
-            case Type::Float: return "float";
+        switch ( type )
+        {
+            case smtlib_node::t_bool: return "bool";
+            case smtlib_node::t_bv: return "int";
+            case smtlib_node::t_float: return "float";
         }
     }
 
     /* float operations */
-    enum class RoundingMode
+    enum class smtlib_rounding
     {
         RNE,    // round nearest, ties to even
         RNA,    // round nearest, ties to away (from zero)
@@ -109,95 +112,86 @@ namespace brick::smt
         RTZ     // round toward zero
     };
 
-    inline std::string to_string( RoundingMode mode )
+    inline std::string to_string( smtlib_rounding mode )
     {
         switch ( mode )
         {
-            case RoundingMode::RNE: return "RNE";
-            case RoundingMode::RNA: return "RNA";
-            case RoundingMode::RTP: return "RTP";
-            case RoundingMode::RTN: return "RTN";
-            case RoundingMode::RTZ: return "RTZ";
+            case smtlib_rounding::RNE: return "RNE";
+            case smtlib_rounding::RNA: return "RNA";
+            case smtlib_rounding::RTP: return "RTP";
+            case smtlib_rounding::RTN: return "RTN";
+            case smtlib_rounding::RTZ: return "RTZ";
             default: UNREACHABLE( "unknown rounding mode", mode );
         };
     }
 
-    static inline brq::string_builder &operator<<( brq::string_builder &o, RoundingMode mode )
+    static inline brq::string_builder &operator<<( brq::string_builder &o, smtlib_rounding mode )
     {
         o << to_string( mode );
         return o;
     }
 
-    template< size_t bitwidth >
-    std::string to_fp();
-
-    // to_fp (bits in exponent) (bits in significand)
-    template<>
-    inline std::string to_fp< 16 >() { return "(_ to_fp 5 11)"; }
-
-    template<>
-    inline std::string to_fp< 32 >() { return "(_ to_fp 8 24)"; }
-
-    template<>
-    inline std::string to_fp< 64 >() { return "(_ to_fp 11 53)"; }
-
-    inline std::string to_fp( size_t bw )
+    static constexpr const char *to_fp( size_t bw )
     {
         switch ( bw )
         {
-            case 16: return to_fp< 16 >();
-            case 32: return to_fp< 32 >();
-            case 64: return to_fp< 64 >();
+            case 16: return "(_ to_fp 5 11)";
+            case 32: return "(_ to_fp 8 24)";
+            case 64: return "(_ to_fp 11 53)";
             default: UNREACHABLE( "Unsupported bitwidth." );
         }
     }
 
-    struct Context
+    struct smtlib_context
     {
+        using node = smtlib_node;
+        using type_t = node::type_t;
+
         std::unordered_set< std::string > def_set;  // set of definitions
-        std::vector< std::pair< std::string, Node > > defs;  // names of definitions
-        std::unordered_map< std::string, Node > vars;
+        std::vector< std::pair< std::string, node > > defs;  // names of definitions
+        std::unordered_map< std::string, node > vars;
 
         void clear() { def_set.clear(); defs.clear(); vars.clear(); }
 
-        // alias a Node with a name
-        Node define( std::string name, Node def )
+        // alias a node with a name
+        node define( std::string name, node def )
         {
             ASSERT( !name.empty() );
             ASSERT( !def_set.count( name ) );
             def_set.insert( name );
             defs.emplace_back( name, def );
-            return Node( def.bw, def.type, name );
+            return node( def.bw, def.type, name );
         }
 
-        Node variable( Node node, std::string name )
+        node variable( node n, std::string name )
         {
             if ( vars.count( name ) )
-                ASSERT_EQ( to_string( node ), to_string( vars.find( name )->second ) );
+                ASSERT_EQ( to_string( n ), to_string( vars.find( name )->second ) );
             else
-                vars.emplace( name, node );
-            return Node( node.bw, node.type, name );
+                vars.emplace( name, n );
+            return node( n.bw, n.type, name );
         }
 
-        Node symbol( int bw, Type type, std::string name ) {
-            return Node( bw, type, name );
+        node symbol( int bw, type_t type, std::string name )
+        {
+            return node( bw, type, name );
         }
 
-        Node bitvec( int, data::SmallVector< uint64_t > data );
-        Node boolT() { return Node( 1, Type::Bool, "Bool" ); }
-        Node bitvecT( int bitwidth )
+        node bitvec( int, brick::data::SmallVector< uint64_t > data );
+        node boolT() { return node( 1, node::t_bool, "Bool" ); }
+        node bitvecT( int bitwidth )
         {
             ASSERT_LEQ( 0, bitwidth );
-            return Node( bitwidth, Type::Int, "(_ BitVec " + std::to_string( bitwidth ) + ")" );
+            return node( bitwidth, node::t_bv, "(_ BitVec " + std::to_string( bitwidth ) + ")" );
         }
 
-        Node floatT( int bitwidth )
+        node floatT( int bitwidth )
         {
             ASSERT_LEQ( 0, bitwidth );
-            return Node( bitwidth, Type::Float, "(Float" + std::to_string( bitwidth ) + ")" );
+            return node( bitwidth, node::t_float, "(Float" + std::to_string( bitwidth ) + ")" );
         }
 
-        Node bitvec( int bw, uint64_t val )
+        node bitvec( int bw, uint64_t val )
         {
             return bitvec( bw, brick::data::SmallVector< uint64_t >{ val } );
         }
@@ -205,14 +199,14 @@ namespace brick::smt
         template< typename Int, typename =
                 std::enable_if_t< std::is_integral< Int >::value &&
                                   ( sizeof( Int ) <= sizeof( uint64_t ) ) > >
-        Node bitvec( Int i )
+        node bitvec( Int i )
         {
-            return bitvec( sizeof( Int ) * 8, data::SmallVector< uint64_t >{ uint64_t( i ) } );
+            return bitvec( sizeof( Int ) * 8, brick::data::SmallVector< uint64_t >{ uint64_t( i ) } );
         }
 
-        Node floatv( int bw, double val, RoundingMode mode = RoundingMode::RNE );
+        node floatv( int bw, double val, smtlib_rounding mode = smtlib_rounding::RNE );
 
-        void print( brq::string_builder &o, Node n, bool exq = true )  // exq = Existential Quantifier
+        void print( brq::string_builder &o, node n, bool exq = true )  // exq = Existential Quantifier
         {
             auto bind = [&]( std::string type, auto &vec, auto next )
             {
@@ -230,7 +224,7 @@ namespace brick::smt
                 let();
         }
 
-        void query( brq::string_builder &o, Node n )
+        void query( brq::string_builder &o, node n )
         {
             for ( auto v : vars )
                 o << "(declare-fun " << v.first << " () " << v.second << ")\n";
@@ -239,7 +233,7 @@ namespace brick::smt
             o << ")\n(check-sat)";
         }
 
-        std::string print( Node n, bool exq = true )
+        std::string print( node n, bool exq = true )
         {
             brq::string_builder s;
             print( s, n, exq );
@@ -249,7 +243,7 @@ namespace brick::smt
                 return s.buffer();
         }
 
-        std::string query( Node n )
+        std::string query( node n )
         {
             brq::string_builder s;
             query( s, n );
@@ -259,24 +253,19 @@ namespace brick::smt
                 return s.buffer();
         }
 
-        using Vector = brick::data::SmallVector< Node, 2 >;
+        using Vector = brick::data::SmallVector< node, 2 >;
 
-        bool is_cmp( Op op )
+        bool is_rounding_mode_required( smt_op op )
         {
-            return ( op >= Op::FirstICMP && op <= Op::LastICMP ) ||
-                   ( op >= Op::FirstFCMP && op <= Op::LastFCMP );
+            return op == smt_op::fp_add || op == smt_op::fp_sub ||
+                   op == smt_op::fp_mul || op == smt_op::fp_div;
         }
 
-        bool is_rounding_mode_required( Op op )
-        {
-            return op == Op::FpAdd || op == Op::FpSub || op == Op::FpMul || op == Op::FpDiv;
-        }
-
-        Node expr( int bw, Op op, const Vector &args, std::optional< RoundingMode > mode )
+        node expr( int bw, smt_op op, const Vector &args, std::optional< smtlib_rounding > mode )
         {
             auto fmt = [=]( brq::string_builder &o )
             {
-                o << "(" << name( op );
+                o << "(" << smt_name( op );
 
                 if ( is_rounding_mode_required( op ) )
                 {
@@ -288,52 +277,52 @@ namespace brick::smt
                     o << " " << a;
                 o << ")";
             };
-            auto type = is_cmp( op ) ? Type::Bool : args[ 0 ].type;
-            return Node( bw, type, fmt );
+            auto type = smt_traits( op ).type == smt_op_compare ? node::t_bool : args[ 0 ].type;
+            return node( bw, type, fmt );
         }
 
-        Node expr( int bw, Op op, const Vector &args )
+        node expr( int bw, smt_op op, const Vector &args )
         {
             return expr( bw, op, args, std::nullopt );
         }
 
 
-        template< Op op >
-        Node unop( int bw, Node arg )
+        template< smt_op op >
+        node unop( int bw, node arg )
         {
-            static_assert( op >= Op::FirstUnary && op <= Op::LastUnary, "op is not a unary operation" );
+            static_assert( smt_arity( op ) == 1 );
             return expr( bw, op, { arg } );
         }
 
-        template< Op op >
-        Node binop( int bw, Node a, Node b )
+        template< smt_op op >
+        node binop( int bw, node a, node b )
         {
-            static_assert( is_integer_bin( op ), "op is not a bitvector binary operation" );
+            static_assert( smt_arity( op ) == 2 );
             ASSERT( a.type == b.type );
             return expr( bw, op, { a, b } );
         }
 
-        template< Op op >
-        Node fpbinop( int bw, Node a, Node b )
+        template< smt_op op >
+        node fpbinop( int bw, node a, node b )
         {
-            static_assert( is_float_bin( op ), "op is not a floating point binary operation" );
+            static_assert( smt_arity( op ) == 2 );
             ASSERT( a.type == b.type );
-            return expr( bw, op, { a, b }, RoundingMode::RNE );
+            return expr( bw, op, { a, b }, smtlib_rounding::RNE );
         }
 
         // extract a subrange from a bitvector
-        Node extract( int highest, int lowest, Node arg )
+        node extract( int highest, int lowest, node arg )
         {
             ASSERT_LEQ( lowest, highest );
             auto f = [=]( brq::string_builder &o )
             {
                 o << "((_ extract " << std::dec << highest << " " << lowest << ") " << arg << ")";
             };
-            return Node( 1 + highest - lowest, Type::Int, f );
+            return node( 1 + highest - lowest, node::t_bv, f );
         };
 
         // if - then - else
-        Node ite( Node cond, Node t, Node f )
+        node ite( node cond, node t, node f )
         {
             ASSERT_EQ( t.bw, f.bw );
             ASSERT( t.type == f.type );
@@ -341,61 +330,24 @@ namespace brick::smt
             {
                 o << "(ite " << cond << " " << t << " " << f << ")";
             };
-            return Node( t.bw, t.type, fmt );
+            return node( t.bw, t.type, fmt );
         }
 
-        template< Op op > Node cast( int bw, const Node & arg );
-    };
-
-    namespace {
-
-    inline Node fp_to_fp_cast( int bw, const Node & arg )
-    {
-        const RoundingMode mode = RoundingMode::RNE;
-        auto fmt = [=]( brq::string_builder &o )
+        node cast( smt_op op, int bw, const node & arg )
         {
-            o << "(" << to_fp( bw ) << " " << to_string( mode ) << " " << arg << " )";
-        };
-        return Node( bw, Type::Float, fmt );
-    }
+            if ( op == smt_op::fp_ext || op == smt_op::fp_trunc )
+            {
+                const auto mode = smtlib_rounding::RNE;
+                auto fmt = [=]( brq::string_builder &o )
+                {
+                    o << "(" << to_fp( bw ) << " " << to_string( mode ) << " " << arg << " )";
+                };
+                return node( bw, node::t_float, fmt );
+            }
 
-    } // anonymous namespace
-
-    template<>
-    inline Node Context::cast< Op::FPExt >( int bw, const Node & arg )
-    {
-        return fp_to_fp_cast( bw, arg );
-    }
-
-    template<>
-    inline Node Context::cast< Op::FPTrunc >( int bw, const Node & arg )
-    {
-        return fp_to_fp_cast( bw, arg );
-    }
-
-    template<>
-    inline Node Context::cast< Op::FPToSInt >( int, const Node & )
-    {
-        NOT_IMPLEMENTED();
-    }
-
-    template<>
-    inline Node Context::cast< Op::FPToUInt >( int, const Node & )
-    {
-        NOT_IMPLEMENTED();
-    }
-
-    template<>
-    inline Node Context::cast< Op::SIntToFP >( int, const Node & )
-    {
-        NOT_IMPLEMENTED();
-    }
-
-    template<>
-    inline Node Context::cast< Op::UIntToFP >( int, const Node & )
-    {
-        NOT_IMPLEMENTED();
-    }
+            NOT_IMPLEMENTED();
+        }
+    };
 
     inline static uint64_t u64mask( int bitwidth )
     {
@@ -449,32 +401,34 @@ namespace brick::smt
         return o;
     }
 
-    inline Node Context::floatv( int bitwidth, double val, RoundingMode mode )
+    inline smtlib_node smtlib_context::floatv( int bitwidth, double val, smtlib_rounding mode )
     {
         static_assert( sizeof( double ) == sizeof( uint64_t ) );
-        return Node( bitwidth, Type::Float,
-            "(" + to_fp( bitwidth ) + " " + to_string( mode ) + " " + std::to_string( val ) + " )"
-        );
+        return node( bitwidth, node::t_float, format( "(", to_fp( bitwidth ), " ", to_string( mode ),
+                                                      " ", val, " )" ).buffer() );
     }
 
-    inline Node Context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > data )
+    inline smtlib_node smtlib_context::bitvec( int bitwidth, brick::data::SmallVector< uint64_t > data )
     {
         auto o = to_bitvector( bitwidth, data );
         if ( o.truncated() )
             throw std::bad_alloc();
-        return Node( bitwidth, Type::Int, o.buffer() );
+        return node( bitwidth, node::t_bv, o.buffer() );
     }
 }
 
-namespace brick::t_smtlib
+namespace t_brq::smtlib
 {
     using namespace brick::smt;
+
+    using node = brq::smtlib_node;
+    using Op = brq::smt_op;
 
     struct BVecTest
     {
         TEST(string)
         {
-            Context ctx;
+            brq::smtlib_context ctx;
 
             auto a = ctx.bitvec( 42 );
             ASSERT_EQ( "#x0000002a", to_string( a ) );
@@ -517,15 +471,15 @@ namespace brick::t_smtlib
     {
         TEST(print)
         {
-            Context ctx;
+            brq::smtlib_context ctx;
 
             ASSERT_EQ( "((_ extract 32 0) #x000000000000002a)",
                        to_string( ctx.extract( 32, 0, ctx.bitvec( 42ull ) ) ) );
             ASSERT_EQ( "((_ extract 15 15) (concat #xff #xff))",
                        to_string( ctx.extract( 15, 15,
-                                               ctx.binop< Op::Concat >( 16,
-                                                                        ctx.bitvec( 8, 0xff ),
-                                                                        ctx.bitvec( 8, 0xff ) ) ) ) );
+                                               ctx.binop< Op::bv_concat >( 16,
+                                                                           ctx.bitvec( 8, 0xff ),
+                                                                           ctx.bitvec( 8, 0xff ) ) ) ) );
         }
     };
 
@@ -533,17 +487,17 @@ namespace brick::t_smtlib
     {
         TEST(simple)
         {
-            Context ctx;
+            brq::smtlib_context ctx;
 
-            ASSERT_EQ( to_string( ctx.binop< Op::BvAdd >( 32, ctx.bitvec( 42 ), ctx.bitvec( 32 ) ) ),
+            ASSERT_EQ( to_string( ctx.binop< Op::bv_add >( 32, ctx.bitvec( 42 ), ctx.bitvec( 32 ) ) ),
                        "(bvadd #x0000002a #x00000020)" );
-            ASSERT_EQ( to_string( ctx.binop< Op::BvAnd >( 32, ctx.symbol( 32, Type::Int, "a" )
-                                                                            , ctx.bitvec( 3, 5 ) ) ),
+            ASSERT_EQ( to_string( ctx.binop< Op::bv_and >( 32, ctx.symbol( 32, node::t_bv, "a" ),
+                                                           ctx.bitvec( 3, 5 ) ) ),
                        "(bvand a #b101)" );
             ASSERT_EQ( to_string(
-                           ctx.binop< Op::BvSLE >(
-                               16, ctx.extract( 32, 16, ctx.symbol( 32, Type::Int, "a" ) ),
-                               ctx.unop< Op::BvNegate >( 16, ctx.bitvec( short( 42 ) ) ) ) ),
+                           ctx.binop< Op::bv_sle >(
+                               16, ctx.extract( 32, 16, ctx.symbol( 32, node::t_bv, "a" ) ),
+                               ctx.unop< Op::bv_neg >( 16, ctx.bitvec( short( 42 ) ) ) ) ),
                        "(bvsle ((_ extract 32 16) a) (bvneg #x002a))" );
         }
     };
