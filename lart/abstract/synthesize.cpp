@@ -77,7 +77,7 @@ namespace lart::abstract
             Argument abstract;
         };
 
-        auto get_function_from_domain() const
+        auto get_lamp_op() const
         {
             if constexpr ( Taint::toBool( T ) )
                 return module->getFunction( "__lamp_to_tristate" );
@@ -255,7 +255,7 @@ namespace lart::abstract
             auto val = arg.abstract.value;
             auto lower = lifter_function()->getParent()->getFunction( "__lamp_decide" );
 
-            auto ptr = get_function_from_domain();
+            auto ptr = get_lamp_op();
             auto trty = lower->getFunctionType()->getParamType( 0 );
             auto fty = llvm::FunctionType::get( trty, { val->getType() }, false );
             auto to_tristate = irb.CreateBitCast( ptr, fty->getPointerTo() );
@@ -417,7 +417,7 @@ namespace lart::abstract
         template< typename builder_t >
         auto call_lamp_op( builder_t &irb )
         {
-            auto ptr = get_function_from_domain();
+            auto ptr = get_lamp_op();
             auto rty = Taint::faultable( T ) ? i8PTy() : lifter_function()->getReturnType();
             auto fty = llvm::FunctionType::get( rty, types_of( args ), false );
             auto op = irb.CreateBitCast( ptr, fty->getPointerTo() );
