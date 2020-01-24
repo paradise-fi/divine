@@ -3,6 +3,8 @@
 
 namespace __lamp
 {
+    using bw = __lava::bitwidth_t;
+
     template< typename... domains >
     struct domain_list : brq::cons_list_t< domains... >
     {
@@ -159,6 +161,10 @@ namespace __lamp
         static self op_udiv( self a, self b ) { return op( wrap( udiv ), a, b ); }
         static self op_srem( self a, self b ) { return op( wrap( srem ), a, b ); }
         static self op_urem( self a, self b ) { return op( wrap( urem ), a, b ); }
+
+        static self op_zext ( self a, bw b ) { return op( wrap( zext,  b ), a ); }
+        static self op_sext ( self a, bw b ) { return op( wrap( sext,  b ), a ); }
+        static self op_trunc( self a, bw b ) { return op( wrap( trunc, b ), a ); }
     };
 
 }
