@@ -149,7 +149,7 @@ extern "C"
     export ptr __lamp_xor ( ptr a, ptr b ) { return wrap( dom::op_xor,  a, b ); }
 
     export ptr __lamp_eq ( ptr a, ptr b )  { return wrap( dom::op_eq,  a, b ); }
-    export ptr __lamp_ne ( ptr a, ptr b )  { return wrap( dom::op_neq, a, b ); }
+    export ptr __lamp_ne ( ptr a, ptr b )  { return wrap( dom::op_ne,  a, b ); }
     export ptr __lamp_ugt( ptr a, ptr b )  { return wrap( dom::op_ugt, a, b ); }
     export ptr __lamp_uge( ptr a, ptr b )  { return wrap( dom::op_uge, a, b ); }
     export ptr __lamp_ult( ptr a, ptr b )  { return wrap( dom::op_ult, a, b ); }
