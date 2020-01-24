@@ -26,6 +26,7 @@ namespace lart::abstract
             auto cond = llvm::cast< llvm::Instruction >( br->getCondition() );
             auto abs = cond->getNextNonDebugInstruction();
             auto op = builder.construct< Operation::Type::ToBool >( abs );
+            meta::set( op.inst, meta::tag::operation::faultable );
             br->setCondition( op.inst );
         }
     }
