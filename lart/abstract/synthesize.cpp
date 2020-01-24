@@ -84,7 +84,9 @@ namespace lart::abstract
             if constexpr ( Taint::assume( T ) )
                 return module->getFunction( "__lamp_assume" );
 
-            return lifter_function();
+            auto meta = taint.inst->getMetadata( meta::tag::operation::impl );
+            ASSERT( meta, *taint.inst );
+            return llvm::mdconst::extract< llvm::Function >( meta->getOperand( 0 ) );
         }
 
         template< typename IRB >
