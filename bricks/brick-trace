@@ -85,19 +85,20 @@ namespace brq
         int line;
         const char *_file, *_statement;
 
-        std::string_view filename() const
+        std::string_view filename() const noexcept
         {
             std::string_view r( _file );
-            r = r.substr( r.find( '/' ) == r.npos ? 0 : r.rfind( '/' ) + 1 );
+            auto idx = r.rfind( '/' );
+            r.remove_prefix( idx == r.npos ? 0 : idx + 1 );
             return r;
         }
 
-        std::string_view file() const
+        std::string_view file() const noexcept
         {
             return _file;
         }
 
-        const char *statement() const
+        const char *statement() const noexcept
         {
             return _statement;
         }
@@ -149,15 +150,17 @@ namespace brq
 
 #ifdef __divine__
         using rules_t = __dios::Array< rule_t >;
+        static constexpr bool nothrow = true;
 #else
         using rules_t = std::vector< rule_t >;
+        static constexpr bool nothrow = false;
 #endif
         rules_t _rules;
         bool _print_tid = false, _print_location = false, _use_syslog = false;
 
         void use_syslog( bool s = true ) { _use_syslog = s; }
 
-        trace()
+        trace() noexcept( nothrow )
         {
             if ( auto env = getenv( "TRACE" ) )
             {
@@ -171,8 +174,9 @@ namespace brq
         static constexpr std::array< const char *, 5 > levels =
             { "error", "info", "debug", "trace", "noise" };
 
-        static std::string_view level( int i ) { return levels[ i ]; }
-        static int level( std::string_view name )
+        static std::string_view level( int i ) noexcept { return levels[ i ]; }
+
+        static int level( std::string_view name ) noexcept
         {
             for ( int i = 0; i < int( levels.size() ); ++i )
                 if ( levels[ i ] == name )
@@ -180,13 +184,17 @@ namespace brq
             return 3;
         }
 
-        void add_rule( std::string_view s, std::string_view l ) { add_rule( s, level( l ) ); }
-        void add_rule( std::string_view suffix, int level, int line = 0 )
+        void add_rule( std::string_view s, std::string_view l ) noexcept ( nothrow )
+        {
+            add_rule( s, level( l ) );
+        }
+
+        void add_rule( std::string_view suffix, int level, int line = 0 ) noexcept ( nothrow )
         {
             _rules.push_back( rule_t{ suffix, line, level } );
         }
 
-        void add_rules( std::string_view str )
+        void add_rules( std::string_view str ) noexcept ( nothrow )
         {
             while ( !str.empty() )
             {
@@ -203,7 +211,7 @@ namespace brq
             }
         }
 
-        bool enabled( int level, const trace_location &l )
+        bool enabled( int level, const trace_location &l ) noexcept
         {
             bool print = false;
 
@@ -222,7 +230,7 @@ namespace brq
             return print;
         }
 
-        bool prepare( string_builder &b, int level, trace_location location )
+        bool prepare( string_builder &b, int level, trace_location location ) noexcept
         {
             if ( !enabled( level, location ) )
                 return false;
@@ -237,14 +245,14 @@ namespace brq
         }
 
 #ifdef __divine__
-        void print( string_builder &b, int )
+        void print( string_builder &b, int ) noexcept
         {
             if ( b.truncated() )
                 __vm_cancel();
             __dios_trace_internal( 0, "%s", b.buffer() );
         }
 #else
-        void print( string_builder &b, int level )
+        void print( string_builder &b, int level ) noexcept
         {
             b << "\n";
 #ifdef __unix__
@@ -260,7 +268,7 @@ namespace brq
 #endif
     };
 
-    static inline struct trace &trace() { return singleton< struct trace >(); }
+    static inline struct trace &trace() noexcept { return singleton< struct trace >(); }
 
     template< bool nofail, typename... Args >
     __debugfn void trace_fn( int level, trace_location location, const Args &... args ) noexcept
