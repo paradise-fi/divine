@@ -35,6 +35,8 @@ namespace __lamp
         {
             if constexpr ( std::is_same_v< from, to > )
                 return f;
+            else if constexpr ( std::is_trivial_v< from > )
+                return f;
             else
                 return to::lift( f );
         }
