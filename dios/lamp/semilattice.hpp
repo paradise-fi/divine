@@ -174,6 +174,17 @@ namespace __lamp
         static self op_zext ( self a, bw b ) { return op( wrap( zext,  b ), a ); }
         static self op_sext ( self a, bw b ) { return op( wrap( sext,  b ), a ); }
         static self op_trunc( self a, bw b ) { return op( wrap( trunc, b ), a ); }
+
+        static self op_eq ( self a, self b ) { return op( wrap( eq  ), a, b ); }
+        static self op_ne ( self a, self b ) { return op( wrap( ne  ), a, b ); }
+        static self op_slt( self a, self b ) { return op( wrap( slt ), a, b ); }
+        static self op_sgt( self a, self b ) { return op( wrap( sgt ), a, b ); }
+        static self op_ult( self a, self b ) { return op( wrap( ult ), a, b ); }
+        static self op_ugt( self a, self b ) { return op( wrap( ugt ), a, b ); }
+
+        static self op_shl ( self a, self b ) { return op( wrap( shl  ), a, b ); }
+        static self op_lshr( self a, self b ) { return op( wrap( lshr ), a, b ); }
+        static self op_ashr( self a, self b ) { return op( wrap( ashr ), a, b ); }
     };
 
 }
