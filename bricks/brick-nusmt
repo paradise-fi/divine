@@ -295,11 +295,20 @@ namespace brq
         friend auto operator<<( stream &o, const smt_atom_t &a ) -> decltype( o << "" )
         {
             o << smt_name( a.op );
-            switch ( a.imm_size() )
+
+            if ( a.imm_size() )
             {
-                case 2: return o << " " << a.imm_get< int16_t >();
-                default: return o;
+                if ( a.is_extract() )
+                    return o << " " << a.bounds();
+                if ( a.varid() )
+                    return o << " " << a.varid();
+                if ( a.is_const() )
+                    return o << " " << a.value();
+                if ( a.is_resize() )
+                    return o << " " << a.bw();
             }
+
+            return o;
         }
     };
 
