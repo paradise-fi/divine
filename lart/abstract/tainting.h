@@ -23,7 +23,8 @@ namespace lart::abstract {
         }
     };
 
-    struct Tainting {
+    struct Tainting
+    {
         void run( llvm::Module & m );
         Taint dispatch( const Operation & ph );
 

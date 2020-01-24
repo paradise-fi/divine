@@ -361,7 +361,8 @@ namespace lart::abstract
 
             std::map< llvm::BasicBlock *, llvm::Value * > lifted;
 
-            auto merge = [&] ( auto cbb, auto lbb ) {
+            auto merge = [&] ( auto cbb, auto lbb )
+            {
                 auto arg = irb.CreatePHI( i8PTy(), 2 );
                 auto phi = llvm::cast< llvm::PHINode >( arg );
                 phi->addIncoming( lifted[ cbb ], cbb ); // concrete path

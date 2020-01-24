@@ -180,10 +180,9 @@ namespace lart::abstract {
             if constexpr ( Operation::store( T ) )
                 return null();
 
-            if ( faultable_operation( op ) ) {
+            if ( faultable_operation( op ) )
                 // call concrete operation instead
                 return concrete_function( ph );
-            }
 
             return null();
         }
