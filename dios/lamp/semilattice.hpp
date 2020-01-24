@@ -15,6 +15,7 @@ namespace __lamp
     {
         using __lava::tagged_array<>::tagged_array;
         using doms = typename sl::doms;
+        using self = semilattice;
 
         template< typename dom_t >
         semilattice( const dom_t &v ) : tagged_array<>( v )
@@ -148,18 +149,16 @@ namespace __lamp
         };
 
         template< typename val_t >
-        static self lift( const val_t &val ) { return doms::car_t::lift( val ); }
+        static self lift( const val_t &val ) { return sl::lift_dom::lift( val ); }
 
-        static self op_add( self a, self b ) { return op( add, a, b ); }
-        static self op_sub( self a, self b ) { return op( sub, a, b ); }
-        static self op_mul( self a, self b ) { return op( mul, a, b ); }
+        static self op_add( self a, self b ) { return op( wrap( add ), a, b ); }
+        static self op_sub( self a, self b ) { return op( wrap( sub ), a, b ); }
+        static self op_mul( self a, self b ) { return op( wrap( mul ), a, b ); }
 
-        static self op_sdiv( self a, self b ) { return op( sdiv, a, b ); }
-        static self op_udiv( self a, self b ) { return op( udiv, a, b ); }
-        static self op_srem( self a, self b ) { return op( srem, a, b ); }
-        static self op_urem( self a, self b ) { return op( urem, a, b ); }
-
-        /* ... */
+        static self op_sdiv( self a, self b ) { return op( wrap( sdiv ), a, b ); }
+        static self op_udiv( self a, self b ) { return op( wrap( udiv ), a, b ); }
+        static self op_srem( self a, self b ) { return op( wrap( srem ), a, b ); }
+        static self op_urem( self a, self b ) { return op( wrap( urem ), a, b ); }
     };
 
 }
