@@ -37,7 +37,6 @@ namespace lart::abstract {
         void run( llvm::Module & m ) {
             auto passes = make_chained_pass( LowerAnnotations()
                                            , DataFlowAnalysis()
-                                           , UndefLifting()
                                            , UnstashPass()
                                            , Syntactic()
                                            , StashPass()
