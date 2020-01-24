@@ -168,7 +168,6 @@ namespace brq
             using std::swap;
             swap( *pos, _container.back() );
             _container.pop_back();
-            sort::sort( begin(), end() );
         }
 
         template< typename K >
