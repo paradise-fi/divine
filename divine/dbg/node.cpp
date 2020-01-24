@@ -321,9 +321,8 @@ vm::HeapPointer Node< Prog, Heap >::heap_address()
 template< typename Prog, typename Heap >
 std::string Node< Prog, Heap >::formula( bool peek, int offset )
 {
-    brick::smt::Context smt_ctx;
-    smt::extract::SMTLib2 smt_value( _ctx.heap(), smt_ctx );
     vm::GenericPointer addr;
+
     if ( peek )
     {
         auto l = _ctx.heap().loc( heap_address() + _offset + offset );
@@ -333,10 +332,12 @@ std::string Node< Prog, Heap >::formula( bool peek, int offset )
     }
     else
         addr = _address;
+
     if ( !addr.object() )
         return "";
-    auto n = smt_value.convert( addr );
-    auto str = smt_ctx.print( n ) + " ";
+
+    auto str = smt::extract::to_string( _ctx.heap(), addr );
+
     if ( offset )
         return "[+" + std::to_string( offset ) + "] " + str;
     else
