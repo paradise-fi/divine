@@ -76,7 +76,12 @@ namespace divine::vm::ctx
             if ( !flagged )
                 this->fault( _VM_F_Leak, this->frame(), this->pc() );
             flagged = true;
-            this->_fault += brq::format( "object ", ptr, " leaked" );
+            TRACE( "object", ptr, "leaked" );
+
+            if ( this->_fault.empty() )
+                this->_fault += "leaked";
+
+            this->_fault += brq::format( " [", ptr, "]" );
         };
 
         if ( this->debug_mode() )
