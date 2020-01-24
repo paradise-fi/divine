@@ -220,15 +220,18 @@ struct Context : DNContext< Heap >
 
     bool is_same( llvm::Value *a, llvm::Value *b )
     {
+        if ( !a || !b )
+            return a == b;
+
         if ( auto bc = llvm::dyn_cast< llvm::BitCastInst >( a ) )
             if ( is_same( bc->getOperand( 0 ), b ) )
                 return true;
+
         if ( auto bc = llvm::dyn_cast< llvm::BitCastInst >( b ) )
             if ( is_same( a, bc->getOperand( 0 ) ) )
                 return true;
-        if ( a == b )
-            return true;
-        return false;
+
+        return a == b;
     }
 
     template < typename F >
