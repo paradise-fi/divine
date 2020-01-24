@@ -113,6 +113,19 @@ extern "C"
     scalar i64   __lamp_any_i64()   { return any< dom, i64 >(); }
 
     /* TODO freeze, melt */
+    export void __lamp_freeze( void *val, void *addr_ )
+    {
+        __vm_pointer_t addr = __vm_pointer_split( addr_ ),
+                       ptr  = __vm_pointer_split( val );
+        __vm_poke( _VM_ML_User, addr.obj, addr.off, 1, ptr.obj );
+    }
+
+    export void *__lamp_melt( void *addr_ )
+    {
+        __vm_pointer_t addr = __vm_pointer_split( addr_ );
+        auto m = __vm_peek( _VM_ML_User, addr.obj, addr.off, 1 );
+        return __vm_pointer_make( m.value, 0 );
+    }
 
     export ptr __lamp_add ( ptr a, ptr b ) { return wrap( dom::op_add, a, b ); }
     export ptr __lamp_sub ( ptr a, ptr b ) { return wrap( dom::op_sub, a, b ); }
