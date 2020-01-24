@@ -65,30 +65,32 @@ namespace __lamp
         }
 
         template< typename op_t, int idx = 0 >
-        static void cast_one( op_t op, const semilattice &v )
+        static auto cast_one( op_t op, const semilattice &v )
         {
             if constexpr ( idx < doms::size )
             {
-                using to_type = typename doms::template type< idx >;
+                using to_type = const typename doms::template type< idx > &;
+                using via = const tagged_array<> &;
                 if ( v.tag() == idx )
-                    op( static_cast< const to_type & >( static_cast< const tagged_array<> & >( v ) ) );
+                    return op( static_cast< to_type >( static_cast< via >( v ) ) );
                 else
-                    cast_one< op_t, idx + 1 >( op, v );
+                    return cast_one< op_t, idx + 1 >( op, v );
             }
+            return cast_one< op_t, 0 >( ( __builtin_trap(), op ), v );
         }
 
         template< typename op_t >
-        static void cast( op_t op ) { op(); }
+        static auto cast( op_t op ) { return op(); }
 
         template< typename op_t, typename arg_t, typename... args_t >
-        static void cast( op_t op, const arg_t &a, const args_t & ... args )
+        static auto cast( op_t op, const arg_t &a, const args_t & ... args )
         {
             auto rec = [&]( const auto &c )
             {
-                cast( [&]( const auto & ... cs ) { op( c, cs... ); }, args... );
+                return cast( [&]( const auto & ... cs ) { return op( c, cs... ); }, args... );
             };
 
-            cast_one( rec, a );
+            return cast_one( rec, a );
         }
 
         template< typename op_t, typename... args_t >
