@@ -114,7 +114,6 @@ namespace __lava
                 }
 
             __builtin_trap();
-            // NOT_IMPLEMENTED();
         }
 
         static constexpr auto wtu = []( const auto & ... xs ) { return with_type< false >( xs... ); };
@@ -147,75 +146,7 @@ namespace __lava
                 __vm_cancel();
             return v;
         }
-#if 0
-        #define PERFORM_CAST_IF( type ) \
-            if ( bw == bitwidth< type >() ) \
-                return lift( static_cast< type >( v ) );
 
-        #define TRUNC_TO_IF( type ) \
-            if ( con.bw == bitwidth< type >() ) \
-                return static_cast< type >( con.value );
-
-        template< bool _signed >
-        _LART_INLINE static auto trunc_to_value( const constant_t & con ) noexcept
-            -> std::enable_if_t< _signed , int64_t >
-        {
-            TRUNC_TO_IF( int8_t )
-            TRUNC_TO_IF( int16_t )
-            TRUNC_TO_IF( int32_t )
-            TRUNC_TO_IF( int64_t )
-        }
-
-        template< bool _signed >
-        _LART_INLINE static auto trunc_to_value( const constant_t & con ) noexcept
-            -> std::enable_if_t< !_signed, uint64_t >
-        {
-            TRUNC_TO_IF( bool )
-            TRUNC_TO_IF( uint8_t )
-            TRUNC_TO_IF( uint16_t )
-            TRUNC_TO_IF( uint32_t )
-            TRUNC_TO_IF( uint64_t )
-        }
-
-        template< bool _signed = false >
-        _LART_INLINE static abstract_value_t cast( abstract_value_t val, bitwidth_t bw ) noexcept
-        {
-            auto v = trunc_to_value< _signed >( get_constant( val ) );
-
-            if constexpr ( _signed ) {
-                PERFORM_CAST_IF( int8_t )
-                PERFORM_CAST_IF( int16_t )
-                PERFORM_CAST_IF( int32_t )
-                PERFORM_CAST_IF( int64_t )
-            } else {
-                PERFORM_CAST_IF( bool )
-                PERFORM_CAST_IF( uint8_t )
-                PERFORM_CAST_IF( uint16_t )
-                PERFORM_CAST_IF( uint32_t )
-                PERFORM_CAST_IF( uint64_t )
-            }
-
-            UNREACHABLE( "unsupported integer constant bitwidth", bw );
-        }
-
-        #define __bin( name, op ) \
-            _LART_INTERFACE static abstract_value_t name( abstract_value_t lhs, abstract_value_t rhs ) noexcept \
-            { \
-                return binary( lhs, rhs, op() ); \
-            }
-
-        #define __sbin( name, op ) \
-            _LART_INTERFACE static abstract_value_t name( abstract_value_t lhs, abstract_value_t rhs ) noexcept \
-            { \
-                return binary< true /* signed */ >( lhs, rhs, op() ); \
-            }
-
-        #define __cast( name, _signed ) \
-            _LART_INTERFACE static abstract_value_t name( abstract_value_t val, bitwidth_t bw ) noexcept \
-            { \
-                return cast< _signed >( val, bw ); \
-            }
-#endif
         using cv = constant;
         using cr = const constant &;
 
@@ -248,59 +179,6 @@ namespace __lava
             return set_bw( wts( []( auto v ) { return int64_t( v ); }, c ), w );
         }
 
-        // op_fadd
-        // op_fsub
-        // op_fmul
-        // op_fdiv
-        // op_frem
-#if 0
-        /* bitwise operations */
-        __bin( op_shl, op::shift_left )
-        __bin( op_lshr, op::shift_right )
-        __sbin( op_ashr, op::arithmetic_shift_right )
-
-        /* comparison operations */
-        //__bin( op_ffalse );
-        //__bin( op_foeq );
-        //__bin( op_fogt );
-        //__bin( op_foge );
-        //__bin( op_folt );
-        //__bin( op_fole );
-        //__bin( op_fone );
-        //__bin( op_ford );
-        //__bin( op_funo );
-        //__bin( op_fueq );
-        //__bin( op_fugt );
-        //__bin( op_fuge );
-        //__bin( op_fult );
-        //__bin( op_fule );
-        //__bin( op_fune );
-        //__bin( op_ftrue );
-
-        __bin( op_eq, std::equal_to );
-        __bin( op_ne, std::not_equal_to );
-        __bin( op_ugt, std::greater );
-        __bin( op_uge, std::greater_equal );
-        __bin( op_ult, std::less );
-        __bin( op_ule, std::less_equal );
-        __sbin( op_sgt, std::greater );
-        __sbin( op_sge, std::greater_equal );
-        __sbin( op_slt, std::less );
-        __sbin( op_sle, std::less_equal );
-
-        /* cast operations */
-        __cast( op_sext, true /* signed */ );
-        __cast( op_zext, false /* unsigned */ );
-        __cast( op_trunc, false /* unsigned */ );
-        //__cast( op_fpext, FPExt );
-        //__cast( op_fptosi, FPToSInt );
-        //__cast( op_fptoui, FPToUInt );
-        //__cast( op_fptrunc, FPTrunc );
-        //__cast( op_inttoptr );
-        //__cast( op_ptrtoint );
-        //__cast( op_sitofp, SIntToFP );
-        //__cast( op_uitofp, UIntToFP );
-#endif
         static void trace( constant ptr, const char * msg = "" ) noexcept
         {
             __dios_trace_f( "%s%d", msg, ptr->value );
