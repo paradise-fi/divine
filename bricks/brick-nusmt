@@ -230,6 +230,20 @@ namespace brq
         size_t size() const { return 1 + smt_imm( op ); }
         size_t imm_size() const { return smt_imm( op ); }
         smt_varid_t varid() const { return smt_traits( op ).is_var() ? imm_get< smt_varid_t >() : 0; }
+        auto bounds() const { return imm_get< std::pair< uint8_t, uint8_t > >(); }
+
+        uint64_t value() const
+        {
+            if ( bw() <= 8 )
+                return imm_get< uint8_t >();
+            if ( bw() <= 16 )
+                return imm_get< uint16_t >();
+            if ( bw() <= 32 )
+                return imm_get< uint32_t >();
+            if ( bw() <= 64 )
+                return imm_get< uint64_t >();
+            UNREACHABLE( "constant", *this, "too wide" );
+        }
 
         template< typename T > void imm_get( T &i ) const { bitcast_mem( _imm, i ); }
         template< typename T >    T imm_get() const { T i; imm_get( i ); return i; }
