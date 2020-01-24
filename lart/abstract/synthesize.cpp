@@ -14,13 +14,7 @@ namespace
         auto & ctx = fn->getContext();
         return llvm::BasicBlock::Create( ctx, name, fn );
     }
-
-    auto inline_call = [] ( auto call )
-    {
-        llvm::InlineFunctionInfo ifi;
-        llvm::InlineFunction( call, ifi );
-    };
-} // anonymous namespace
+}
 
 namespace lart::abstract
 {
