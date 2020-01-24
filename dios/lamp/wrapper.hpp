@@ -85,6 +85,7 @@ static auto any()
 
 #define export __invisible __flatten
 #define scalar export __annotate( lart.abstract.return.scalar )
+#define array  export __annotate( lart.abstract.return.aggregate )
 
 extern "C"
 {
@@ -111,6 +112,7 @@ extern "C"
     scalar i16   __lamp_any_i16()   { return any< dom, i16 >(); }
     scalar i32   __lamp_any_i32()   { return any< dom, i32 >(); }
     scalar i64   __lamp_any_i64()   { return any< dom, i64 >(); }
+    array  char *__lamp_any_array() { return any< dom, char * >(); }
 
     /* TODO freeze, melt */
     export void __lamp_freeze( void *val, void *addr_ )
@@ -185,6 +187,10 @@ extern "C"
     export ptr __lamp_fpext  ( ptr a, bw  b ) { return wrap( dom::op_fpext,   a, b ); }
     export ptr __lamp_fptosi ( ptr a, bw  b ) { return wrap( dom::op_fptosi,  a, b ); }
     export ptr __lamp_fptoui ( ptr a, bw  b ) { return wrap( dom::op_fptoui,  a, b ); }
+
+    export ptr __lamp_gep( ptr a, ptr b, uint64_t s ) { return wrap( dom::op_gep, a, b, s ); }
+    export ptr __lamp_store( ptr a, ptr b, bw w ) { return wrap( dom::op_store, a, b, w ); }
+    export ptr __lamp_load( ptr a, bw w ) { return wrap( dom::op_load, a, w ); }
 
     export uint8_t __lamp_to_tristate( ptr v )
     {

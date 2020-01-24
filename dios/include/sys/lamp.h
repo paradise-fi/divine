@@ -33,6 +33,7 @@ uint8_t  __lamp_any_i8();
 uint16_t __lamp_any_i16();
 uint32_t __lamp_any_i32();
 uint64_t __lamp_any_i64();
+char    *__lamp_any_array();
 
 void  __lamp_freeze( void *val, void *addr );
 void *__lamp_melt( void *addr_ );
