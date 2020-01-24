@@ -47,7 +47,7 @@ namespace __lamp
         }
 
         template< typename op_t, int idx = 0, typename... args_t >
-        static void in_domain( int dom, op_t op, const args_t & ... args )
+        static auto in_domain( int dom, op_t op, const args_t & ... args )
         {
             if constexpr ( idx < doms::size )
             {
@@ -66,7 +66,7 @@ namespace __lamp
                     return in_domain< op_t, idx + 1 >( dom, op, args... );
             }
             else
-                __builtin_trap();
+                return in_domain< op_t, 0 >( ( __builtin_trap(), dom ), op, args... );
         }
 
         template< typename op_t, int idx = 0 >
