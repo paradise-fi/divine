@@ -90,6 +90,17 @@ namespace divine::smt::extract
 {
 
 using SMTLib2 = Extract< builder::SMTLib2 >;
+
+template< typename heap_t >
+std::string to_string( heap_t &heap, vm::HeapPointer ptr )
+{
+    brq::smtlib_context ctx;
+    SMTLib2 extract( heap, ctx, "", false );
+    auto assumes = extract.read( ptr );
+    TRACE( "smt::extract::to_string", assumes );
+    return to_string( evaluate( extract, assumes ) );
+}
+
 #if OPT_Z3
 using Z3      = Extract< builder::Z3 >;
 #endif
