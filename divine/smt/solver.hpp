@@ -89,7 +89,7 @@ struct SMTLib
     SMTLib( const Options &opts ) : _opts{ opts } {}
 
     void reset() { _asserts.clear(); _ctx.clear(); }
-    void add( brick::smt::Node p ) { _asserts.push_back( p ); }
+    void add( brq::smtlib_node p ) { _asserts.push_back( p ); }
 
     Result solve();
 
@@ -103,8 +103,8 @@ struct SMTLib
         return extract::SMTLib2( h, _ctx, "_"s + char( 'a' + id ) );
     }
 
-    std::vector< brick::smt::Node > _asserts;
-    brick::smt::Context _ctx;
+    std::vector< brq::smtlib_node > _asserts;
+    brq::smtlib_context _ctx;
     Options _opts;
 };
 
