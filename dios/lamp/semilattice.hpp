@@ -1,9 +1,11 @@
 #include <brick-cons>
 #include <dios/lava/base.hpp>
+#include <dios/lava/tristate.hpp>
 
 namespace __lamp
 {
     using bw = __lava::bitwidth_t;
+    using tristate = __lava::tristate;
 
     template< typename... domains >
     struct domain_list : brq::cons_list_t< domains... >
@@ -134,6 +136,10 @@ namespace __lamp
         static constexpr auto ashr = []( auto a ) { return decltype( a )::op_ashr; };
 
         static constexpr auto trunc = []( auto a ) { return decltype( a )::op_trunc; };
+
+        static constexpr auto _assume = []( auto a ) { return decltype( a )::assume; };
+        static constexpr auto _tristate = []( auto a ) { return decltype( a )::to_tristate; };
+
         static constexpr auto run = []( const auto &op, const auto & ... bind  )
         {
             return [=]( const auto &arg, const auto & ... args )
@@ -152,6 +158,9 @@ namespace __lamp
 
         template< typename val_t >
         static self lift( const val_t &val ) { return sl::lift_dom::lift( val ); }
+
+        static self assume( self a, self b, bool c ) { return op( wrap( _assume, c ), a, b ); }
+        static tristate to_tristate( self a ) { return op( run( _tristate ), a ); }
 
         static self op_add( self a, self b ) { return op( wrap( add ), a, b ); }
         static self op_sub( self a, self b ) { return op( wrap( sub ), a, b ); }
