@@ -86,12 +86,7 @@ namespace divine::mc
         {
             _assume.push_back( ta.ptr );
             if ( debug_allowed() )
-            {
-                brick::smt::Context ctx;
-                smt::extract::SMTLib2 extract( heap(), ctx, "", false );
-                auto assumes = extract.read( ta.ptr );
-                trace( "ASSUME " + to_string( evaluate( extract, assumes ) ) );
-            }
+                trace( "ASSUME " + smt::extract::to_string( heap(), ta.ptr ) );
         }
 
         bool test_crit( vm::CodePointer pc, vm::GenericPointer ptr, int size, int type )

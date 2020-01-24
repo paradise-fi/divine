@@ -34,12 +34,7 @@ namespace divine::mc
         {
             _assume.push_back( ta.ptr );
             if ( this->debug_allowed() )
-            {
-                brick::smt::Context ctx;
-                smt::extract::SMTLib2 extract( this->heap(), ctx, "", false );
-                auto assume = extract.read( ta.ptr );
-                trace( "ASSUME " + to_string( evaluate( extract, assume ) ) );
-            }
+                trace( "ASSUME " + smt::extract::to_string( this->heap(), ta.ptr ) );
         }
     };
 
