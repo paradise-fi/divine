@@ -227,6 +227,38 @@ namespace brq
         bool is_cast()    const { return smt_traits( op ).is_cast(); }
         bool is_extract() const { return op == smt_op::bv_extract; }
         int  arity()      const { return smt_traits( op ).arity; }
+
+        template< typename... args_t >
+        static int first_( int v, args_t... )
+        {
+            return v;
+        }
+
+        static int first_() { return 0; }
+
+        template< typename... args_t >
+        int bw( args_t ... args ) const
+        {
+            if ( auto w = smt_bw( op ) ) /* fixed-width cases */
+                return w;
+
+            if ( op == smt_op::bv_concat )
+            {
+                ASSERT_EQ( sizeof...( args ), 2 );
+                return ( 0 + ... + args );
+            }
+
+            if ( op == smt_op::bv_extract )
+                return bounds().second - bounds().first + 1;
+
+            if ( is_resize() )
+                return imm_get< uint8_t >();
+
+            auto val = first_( args... );
+            ASSERT( ( ( val == args ) && ... ) );
+            return val;
+        }
+
         size_t size() const { return 1 + smt_imm( op ); }
         size_t imm_size() const { return smt_imm( op ); }
         smt_varid_t varid() const { return smt_traits( op ).is_var() ? imm_get< smt_varid_t >() : 0; }
