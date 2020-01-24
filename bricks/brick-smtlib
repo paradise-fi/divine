@@ -97,7 +97,7 @@ namespace brq
         switch ( type )
         {
             case smtlib_node::t_bool: return "bool";
-            case smtlib_node::t_bv: return "int";
+            case smtlib_node::t_bv: return "bv";
             case smtlib_node::t_float: return "float";
         }
     }
@@ -277,6 +277,7 @@ namespace brq
                     o << " " << a;
                 o << ")";
             };
+
             auto type = smt_traits( op ).type == smt_op_compare ? node::t_bool : args[ 0 ].type;
             return node( bw, type, fmt );
         }
@@ -298,7 +299,7 @@ namespace brq
         node binop( int bw, node a, node b )
         {
             static_assert( smt_arity( op ) == 2 );
-            ASSERT( a.type == b.type );
+            ASSERT_EQ( a.type, b.type );
             return expr( bw, op, { a, b } );
         }
 
