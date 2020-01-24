@@ -420,8 +420,6 @@ namespace brq
 
 namespace t_brq::smtlib
 {
-    using namespace brick::smt;
-
     using node = brq::smtlib_node;
     using Op = brq::smt_op;
 
