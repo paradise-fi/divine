@@ -38,10 +38,11 @@ namespace __lava
     /* Add a constraint to the term. A constraint is again a term_t, e.g. a > 7.
      * !`expect` is for when an else branch was taken, in which case the tested
      * condition had to be false. */
-    term term::assume( term t, term c, bool expect )
+    term term::assume( const term &t, const term &c, bool expect )
     {
         if ( !expect )
-            c = term( c, op::bv_not );
+            return assume( t, term( c, op::bool_not ), true );
+
         auto &decomp = __term_state->decomp;
 
         auto append_term = [&]( brq::smt_varid_t var )
