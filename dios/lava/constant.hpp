@@ -140,7 +140,7 @@ namespace __lava
                 return { tristate::no };
         }
 
-        static constant assume( const constant &v, const constant &c, bool expect ) noexcept
+        static constant assume( const constant &v, const constant &c, bool expect )
         {
             if ( c->value != expect )
                 __vm_cancel();
@@ -179,7 +179,7 @@ namespace __lava
             return set_bw( wts( []( auto v ) { return int64_t( v ); }, c ), w );
         }
 
-        static void trace( constant ptr, const char * msg = "" ) noexcept
+        static void trace( constant ptr, const char * msg = "" )
         {
             __dios_trace_f( "%s%d", msg, ptr->value );
         };
