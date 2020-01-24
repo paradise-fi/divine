@@ -377,7 +377,10 @@ namespace lart::abstract
                 irb.SetInsertPoint( exit );
             }
             else
+            {
+                ASSERT_EQ( paired.size(), 1, *lifter_function(), *taint.inst );
                 args.push_back( paired.front().abstract.value );
+            }
 
             auto call = call_lamp_op( irb );
             return_from_lifter( irb, call );
