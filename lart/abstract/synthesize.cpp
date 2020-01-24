@@ -199,9 +199,7 @@ namespace lart::abstract
         auto construct( builder_t &irb ) -> ENABLE_IF( binary )
         {
             construct_binary_lifter( irb );
-
-            auto call = call_lifter( irb );
-            return_from_lifter( irb, call );
+            return_from_lifter( irb, call_lamp_op( irb ) );
         }
 
         template< typename builder_t, lifter_op_t op = T >
@@ -213,8 +211,7 @@ namespace lart::abstract
             const auto &idx = inargs[ 4 ];
             args.push_back( idx.value );
 
-            auto call = call_lifter( irb );
-            return_from_lifter( irb, call );
+            return_from_lifter( irb, call_lamp_op( irb ) );
         }
 
         template< typename builder_t, lifter_op_t op = T >
@@ -226,8 +223,7 @@ namespace lart::abstract
             args.push_back( agg.abstract.value );
             args.push_back( idx.value );
 
-            auto call = call_lifter( irb );
-            return_from_lifter( irb, call );
+            return_from_lifter( irb, call_lamp_op( irb ) );
         }
 
         template< typename builder_t, lifter_op_t op = T >
@@ -275,8 +271,7 @@ namespace lart::abstract
             args.push_back( inargs[ 3 ].value ); // constraint condition
             args.push_back( inargs[ 4 ].value ); // assumed constraint value
 
-            auto call = call_lifter( irb );
-            return_from_lifter( irb, call );
+            return_from_lifter( irb, call_lamp_op( irb ) );
         }
 
         template< typename builder_t, lifter_op_t op = T >
@@ -336,7 +331,7 @@ namespace lart::abstract
             auto bw = inargs[ 0 ].value->getType()->getPrimitiveSizeInBits();
             args.push_back( i8( bw ) ); // bitwidth of thawed value
 
-            auto call = call_lifter( irb );
+            auto call = call_lamp_op( irb );
             return_from_lifter( irb, call );
         }
 
@@ -350,8 +345,7 @@ namespace lart::abstract
             auto bw = cast->getDestTy()->getPrimitiveSizeInBits();
             args.push_back( i8( bw ) );
 
-            auto call = call_lifter( irb );
-            return_from_lifter( irb, call );
+            return_from_lifter( irb, call_lamp_op( irb ) );
         }
 
         template< typename builder_t, lifter_op_t op = T >
@@ -414,12 +408,12 @@ namespace lart::abstract
             else
                 args.push_back( paired.front().abstract.value );
 
-            auto call = call_lifter( irb );
+            auto call = call_lamp_op( irb );
             return_from_lifter( irb, call );
         }
 
         template< typename builder_t >
-        auto call_lifter( builder_t &irb )
+        auto call_lamp_op( builder_t &irb )
         {
             auto ptr = get_function_from_domain();
             auto rty = Taint::faultable( T ) ? i8PTy() : lifter_function()->getReturnType();
