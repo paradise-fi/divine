@@ -254,7 +254,7 @@ namespace brq
     };
 
     struct primary_t {};
-    static primary_t primary;
+    static constexpr primary_t primary;
 
     /* Format a bunch of values into a stream, separated by spaces. Values that
      * don't have a string_builder formatting operator are printed as
