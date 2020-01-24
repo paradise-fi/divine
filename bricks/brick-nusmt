@@ -49,8 +49,8 @@ namespace brq
     enum class smt_op : uint8_t
     {
         invalid, eq, neq,
-        var_bool, var_i8, var_i16, var_i32, var_i64, var_f32, var_f64,
-        const_bool, const_i8, const_i16, const_i32, const_i64, const_f32, const_f64,
+        var_i1, var_i8, var_i16, var_i32, var_i64, var_f32, var_f64,
+        const_i1, const_i8, const_i16, const_i32, const_i64, const_f32, const_f64,
         bv_not, bv_neg,
         bv_sext, bv_zext, bv_trunc, bv_zfit, bv_stofp, bv_utofp,
         fp_ext, fp_trunc, fp_tosbv, fp_toubv,
@@ -74,26 +74,26 @@ namespace brq
 
         switch ( v )
         {
-            case op::invalid:   return { "invalid",  0, 0,  0 };
+            case op::invalid:    return { "invalid",  0, 0,  0 };
 
-            case op::eq:        return { "=",  2, 0, 1, smt_op_compare };
-            case op::neq:       return { "!=", 2, 0, 1, smt_op_compare };
+            case op::eq:         return { "=",  2, 0, 1, smt_op_compare };
+            case op::neq:        return { "!=", 2, 0, 1, smt_op_compare };
 
-            case op::var_bool:  return { "var_bool", 0, 2,  1, smt_op_var };
-            case op::var_i8:    return { "var_i8",   0, 2,  8, smt_op_var };
-            case op::var_i16:   return { "var_i16",  0, 2, 16, smt_op_var };
-            case op::var_i32:   return { "var_i32",  0, 2, 32, smt_op_var };
-            case op::var_i64:   return { "var_i64",  0, 2, 64, smt_op_var };
-            case op::var_f32:   return { "var_f32",  0, 2, 32, smt_op_var };
-            case op::var_f64:   return { "var_f64",  0, 2, 32, smt_op_var };
+            case op::var_i1:     return { "var_i1",    0, 2,  1, smt_op_var };
+            case op::var_i8:     return { "var_i8",    0, 2,  8, smt_op_var };
+            case op::var_i16:    return { "var_i16",   0, 2, 16, smt_op_var };
+            case op::var_i32:    return { "var_i32",   0, 2, 32, smt_op_var };
+            case op::var_i64:    return { "var_i64",   0, 2, 64, smt_op_var };
+            case op::var_f32:    return { "var_f32",   0, 2, 32, smt_op_var };
+            case op::var_f64:    return { "var_f64",   0, 2, 32, smt_op_var };
 
-            case op::const_bool: return { "const_bool", 0, 1,  1, smt_op_const };
-            case op::const_i8:   return { "const_i8",   0, 1,  8, smt_op_const };
-            case op::const_i16:  return { "const_i16",  0, 2, 16, smt_op_const };
-            case op::const_i32:  return { "const_i32",  0, 4, 32, smt_op_const };
-            case op::const_i64:  return { "const_i64",  0, 8, 64, smt_op_const };
-            case op::const_f32:  return { "const_f32",  0, 4, 32, smt_op_const };
-            case op::const_f64:  return { "const_f64",  0, 8, 64, smt_op_const };
+            case op::const_i1:   return { "const_i1",  0, 1,  1, smt_op_const };
+            case op::const_i8:   return { "const_i8",  0, 1,  8, smt_op_const };
+            case op::const_i16:  return { "const_i16", 0, 2, 16, smt_op_const };
+            case op::const_i32:  return { "const_i32", 0, 4, 32, smt_op_const };
+            case op::const_i64:  return { "const_i64", 0, 8, 64, smt_op_const };
+            case op::const_f32:  return { "const_f32", 0, 4, 32, smt_op_const };
+            case op::const_f64:  return { "const_f64", 0, 8, 64, smt_op_const };
 
             case op::bv_not:     return { "bvnot", 1, 0, 1 };
             case op::bv_neg:     return { "bvneg", 1 };
