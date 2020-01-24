@@ -307,7 +307,7 @@ namespace brq
         void apply( const smt_expr &e )
         {
             base::resize( base::size() + e.base::size() );
-            iterator it = base::end() - e.base::size();
+            auto it = base::end() - e.base::size();
             std::copy( e.base::begin(), e.base::end(), it );
         }
 
