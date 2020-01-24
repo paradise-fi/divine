@@ -100,6 +100,7 @@
 #define __local_invisible __local_skipcfl __annotate( lart.interrupt.local.skipmem )
 #define __boring          __annotate( lart.boring )
 #define __weakmem_direct  __noinline __annotate( lart.weakmem.direct )
+#define __flatten         __attribute__(( __flatten__ ))
 
 /*
  * GCC1 and some versions of GCC2 declare dead (non-returning) and
