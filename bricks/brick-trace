@@ -110,7 +110,7 @@ namespace brq
      * to just say `env BRICK_TRACE=all program`. */
 
     template< typename T >
-    [[gnu::destructor]] void singleton_destroy( T *x )
+    [[gnu::destructor]] void singleton_destroy( T *x ) noexcept( std::is_nothrow_destructible_v< T > )
     {
         static bool called = false;
         static T *destroy = nullptr;
@@ -128,7 +128,7 @@ namespace brq
     }
 
     template< typename T >
-    [[gnu::constructor]] T &singleton() noexcept
+    [[gnu::constructor]] T &singleton() noexcept( std::is_nothrow_default_constructible_v< T > )
     {
         static char memory[ sizeof( T ) ];
         static T *value = nullptr;
