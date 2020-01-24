@@ -34,6 +34,10 @@ namespace brq
         static constexpr size_t size = 0;
 
         template< int idx > using type_at = void;
+
+        template< typename T, int = 0 >
+        static constexpr int index_of = -1;
+
         template< template< typename > class f > using map_t = nil;
         template< typename L >                   using cat_t = L;
 
@@ -108,6 +112,9 @@ namespace brq
         template< int idx >
         using type_at = std::conditional_t< idx == 0, car_t,
                                             typename cdr_t::template type_at< idx - 1 > >;
+
+        template< typename T, int i = 0 > static constexpr int index_of =
+            std::is_same_v< T, car_t > ? i : cdr_t::template index_of< T, i + 1 >;
 
         template< typename T > static constexpr bool has =
             std::is_same_v< T, car_t > || cdr_t::template has< T >;
@@ -344,6 +351,11 @@ namespace t_brq
             static_assert( std::is_same_v< decltype( z ), brq::cons_list_t_< int & > > );
         }
     };
+
+    using test_list = brq::cons_list_t< int, long, void * >;
+    static_assert( test_list::index_of< int > == 0 );
+    static_assert( test_list::index_of< long > == 1 );
+    static_assert( test_list::index_of< void * > == 2 );
 }
 
 // vim: syntax=cpp tabstop=4 shiftwidth=4 expandtab ft=cpp
