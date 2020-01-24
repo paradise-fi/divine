@@ -54,7 +54,7 @@ namespace brq
         bv_not, bv_neg,
         bv_sext, bv_zext, bv_trunc, bv_zfit, bv_stofp, bv_utofp,
         fp_ext, fp_trunc, fp_tosbv, fp_toubv,
-        bool_and, bool_or, bool_xor, bool_imply,
+        bool_and, bool_or, bool_xor, bool_imply, bool_not,
         bv_and, bv_or, bv_xor,
         bv_add, bv_sub, bv_mul, bv_udiv, bv_sdiv, bv_urem, bv_srem,
         bv_shl, bv_lshr, bv_ashr,
@@ -114,6 +114,7 @@ namespace brq
             case op::bool_or:    return { "or",   2, 0, 1 };
             case op::bool_xor:   return { "xor",  2, 0, 1 };
             case op::bool_imply: return { "=>",   2, 0, 1 };
+            case op::bool_not:   return { "not",  1, 0, 1 };
 
             case op::bv_and:     return { "bvand",  2 };
             case op::bv_or:      return { "bvor",   2 };
