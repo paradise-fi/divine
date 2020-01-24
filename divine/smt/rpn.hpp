@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <brick-smt>
+#include <brick-nusmt>
 #include <divine/vm/pointer.hpp>
 
 #include <list>
@@ -29,43 +29,12 @@
 
 namespace divine::smt
 {
-    //using RPN = brick::smt::RPN< Array< uint8_t > >;
-    using RPN = brick::smt::RPN< std::vector< uint8_t > >; // no append ! RPN::extend
-    using RPNView = brick::smt::RPNView< RPN >;
-    using namespace brick::smt::token;
-
-    using Op = brick::smt::Op;
-
-    using Bitwidth = brick::smt::Bitwidth;
-
-    using Constant = RPNView::Constant;
-    using Variable = RPNView::Variable;
-    using CastOp = RPNView::CastOp;
-    using ExtractOp = RPNView::ExtractOp;
-    using CallOp = RPNView::CallOp;
-
-    // TODO move to utils
-    template<class... Ts> struct overload : Ts... { using Ts::operator()...; };
-    template<class... Ts> overload(Ts...) -> overload<Ts...>;
-
-    constexpr Bitwidth bitwidth( Op op, Bitwidth abw, Bitwidth bbw ) noexcept
+    template< typename builder_t, typename expr_t >
+    auto evaluate( builder_t &bld, const expr_t &expr, bool *is_constraint = nullptr )
     {
-        if ( brick::smt::is_concat( op ) )
-            return abw + bbw;
-        ASSERT_EQ( abw, bbw );
-        if ( brick::smt::is_cmp( op ) )
-            return 1;
-        return abw;
-    }
+        using node_t = typename builder_t::Node;
 
-    template< typename Builder >
-    auto evaluate( Builder &bld, const RPN &rpn, bool *is_constraint = nullptr )
-        -> typename Builder::Node
-    {
-        using Node = typename Builder::Node;
-
-        std::vector< std::pair< Node, Bitwidth > > stack;
-        std::list< std::pair< RPN, RPNView::Iterator > > control_stack;
+        std::vector< std::pair< node_t, int > > stack;
 
         auto pop = [&]()
         {
@@ -75,96 +44,42 @@ namespace divine::smt
             return v;
         };
 
-        auto push = [&]( Node n, Bitwidth bw )
+        auto push = [&]( node_t n, int bw )
         {
             TRACE( "push", n, "bw", bw );
             stack.emplace_back( n, bw );
         };
 
-        auto push_control = [&]( RPN&& rpn )
-        {
-            control_stack.emplace_back( std::move( rpn ), RPNView::Iterator() );
-            control_stack.back().second = RPNView{ control_stack.back().first }.begin();
-        };
+        TRACE( "evaluate", expr );
 
-        auto handle_binary = [&] ( BinaryOp bin )
+        for ( auto &atom : expr )
         {
-            if ( bin.op == Op::Constraint )
+            if ( is_constraint )
+                *is_constraint = atom.op == brq::smt_op::constraint;
+
+            auto op = atom.op;
+
+            if      ( atom.varid() )      push( bld.variable( atom.varid(), atom.bw() ), atom.bw() );
+            else if ( atom.is_const() )   push( bld.constant( atom.value(), atom.bw() ), atom.bw() );
+            else if ( atom.is_extract() )
             {
-                bin.op = Op::And;
-                if ( is_constraint ) *is_constraint = true;
+                auto [ arg, bw ] = pop();
+                push( bld.extract( arg, atom.bounds() ), atom.bw( bw ) );
             }
-
-            auto [ b, bbw ] = pop();
-            auto [ a, abw ] = pop();
-
-            auto bw = bitwidth( bin.op, abw, bbw );
-            push( bld.binary( { bin.op, bw }, a, b ), bw );
-        };
-
-        auto handle_unary = [&]( const UnaryOp &un )
-        {
-            auto [ arg, bw ] = pop();
-            push( bld.unary( { un, bw }, arg ), bw );
-        };
-
-        auto handle_extract = [&]( const ExtractOp &extract )
-        {
-            auto [arg, bw] = pop();
-            auto extracted_bw = extract.highest - extract.lowest + 1;
-            Unary op = { { Op::Extract }, extracted_bw, extract.highest, extract.lowest };
-            push( bld.unary( op, arg ), extracted_bw );
-        };
-
-        auto handle_cast = [&]( CastOp cast )
-        {
-            auto [ arg, bw ] = pop();
-
-            if ( cast.op == Op::ZFit )
+            else if ( atom.arity() == 1 )
             {
-                if ( cast.bitwidth < bw )
-                    cast.op = Op::Trunc;
-                else
-                    cast.op = Op::ZExt;
+                auto [ arg, bw ] = pop();
+                push( bld.unary( op, arg, atom.bw( bw ) ), atom.bw( bw ) );
             }
-
-            Unary op = { {{ cast.op }}, cast.bitwidth };
-            push( bld.unary( op, arg ), cast.bitwidth );
-        };
-
-        auto handle_call = [&]( CallOp call )
-        {
-            vm::HeapPointer ptr( call.objid );
-            RPN rpn = bld.read( ptr );
-            push_control( RPN( rpn ) );
-        };
-
-        auto handle_term = overload
-        {
-            [&]( const Constant& con ) { push( bld.constant( con ), con.bitwidth() ); },
-            [&]( const Variable& var ) { push( bld.variable( var ), var.bitwidth() ); },
-            handle_unary, handle_cast, handle_extract, handle_binary, handle_call,
-            [&]( const auto &term ) { UNREACHABLE( "unsupported term type", term ); }
-        };
-
-        TRACE( "evaluate", rpn );
-
-        push_control( RPN( rpn ) );
-
-        while ( !control_stack.empty() )
-        {
-            auto& cs = control_stack.back();
-            RPNView view{ cs.first };
-            auto term = *cs.second;
-            ++cs.second;
-
-            if ( cs.second == view.end() )
-                control_stack.pop_back();
-
-            if ( is_constraint ) *is_constraint = false;
-            std::visit( handle_term, term );
+            else if ( atom.arity() == 2 )
+            {
+                auto [ b, bbw ] = pop();
+                auto [ a, abw ] = pop();
+                push( bld.binary( op, a, b, atom.bw( abw, bbw ) ), atom.bw( abw, bbw ) );
+            }
         }
 
+        ASSERT_EQ( stack.size(), 1 );
         return stack.back().first;
     }
 }
