@@ -45,7 +45,14 @@ enum class Result { False, True, Unknown };
 struct None
 {
     bool equal( vm::HeapPointer, SymPairs &, vm::CowHeap &, vm::CowHeap & ) { return true; }
-    bool feasible( vm::CowHeap &, vm::HeapPointer ) { return true; }
+
+    bool feasible( vm::CowHeap &, vm::HeapPointer a )
+    {
+        brq::raise() << "Cannot evaluate an assumption without a solver.\n"
+                     << "Did you mean to use --symbolic?";
+        return true;
+    }
+
     void reset() {}
 };
 
