@@ -457,6 +457,7 @@ namespace lart::abstract {
             auto call = llvm::IRBuilder<>( placeholder ).CreateCall( fn, args );
             auto mat = Taint( call, T, true );
 
+            inherit_metadata( mat, op );
             rematch( mat, op );
 
             return mat;
@@ -489,6 +490,21 @@ namespace lart::abstract {
             if ( !ph.inst->getType()->isVoidTy() )
                 ph.inst->replaceAllUsesWith( lif );
         }
+
+        template< typename Lifter, typename Placeholder >
+        void inherit_metadata( Lifter lifter, Placeholder ph )
+        {
+            if constexpr ( Taint::assume( T ) || Taint::toBool( T ) )
+                return;
+
+            auto con = llvm::cast< llvm::Instruction >( concrete( ph.inst ) );
+
+            for ( auto tag : { meta::tag::operation::impl, meta::tag::operation::faultable } )
+            {
+                lifter.inst->setMetadata( tag, con->getMetadata( tag ) );
+                lifter.function()->setMetadata( tag, con->getMetadata( tag ) );
+            }
+	}
 
         auto concrete( llvm::Value * val )
         {
