@@ -10,7 +10,6 @@ DIVINE_UNRELAX_WARNINGS
 
 #include <lart/support/annotate.h>
 
-#include <lart/abstract/init.h>
 #include <lart/abstract/annotation.h>
 #include <lart/abstract/dfa.h>
 #include <lart/abstract/decast.h>
@@ -37,7 +36,6 @@ namespace lart::abstract {
 
         void run( llvm::Module & m ) {
             auto passes = make_chained_pass( LowerAnnotations()
-                                           , InitAbstractions()
                                            , DataFlowAnalysis()
                                            , UndefLifting()
                                            , UnstashPass()
