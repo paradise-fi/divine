@@ -230,15 +230,18 @@ namespace lart::abstract::meta {
     void set_value_as_meta( llvm::Instruction * inst, const std::string & tag, llvm::Value * val ) {
         auto &ctx = inst->getContext();
 
-        auto meta = [&] {
-            if ( llvm::isa< llvm::Instruction >( val ) )
-                return meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
-            if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) ) {
+        auto meta = [&]
+        {
+            if ( auto arg = llvm::dyn_cast< llvm::Argument >( val ) )
+            {
                 auto i64 = llvm::Type::getInt64Ty( ctx );
                 auto con = llvm::ConstantInt::get( i64, arg->getArgNo() );
                 return meta::tuple::create( ctx, { llvm::ConstantAsMetadata::get( con ) } );
             }
-            UNREACHABLE( "Unsupported value" );
+            else if ( auto c = llvm::dyn_cast< llvm::Constant >( val ) )
+                return meta::tuple::create( ctx, { llvm::ConstantAsMetadata::get( c ) } );
+            else
+                return meta::tuple::create( ctx, { llvm::ValueAsMetadata::get( val ) } );
         } ();
 
         inst->setMetadata( tag, meta );
