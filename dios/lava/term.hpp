@@ -67,14 +67,14 @@ namespace __lava
         template< typename T >
         static term any()
         {
-            constexpr auto op = brq::smt_match_op< brq::smt_op_var, sizeof( T ) * 8 >;
+            constexpr auto op = brq::smt_match_op< brq::smt_op_var, bitwidth_v< T > >;
             return { brq::smt_atom_t< T >( op, counter() ) };
         }
 
         template< typename T >
         static term lift( T value )
         {
-            constexpr auto op = brq::smt_match_op< brq::smt_op_const, sizeof( T ) * 8 >;
+            constexpr auto op = brq::smt_match_op< brq::smt_op_const, bitwidth_v< T > >;
             return { brq::smt_atom_t< T >( op, value ) };
         }
 

@@ -82,7 +82,7 @@ namespace __lava
             if constexpr ( std::is_floating_point_v< concrete_t > )
                 type = constant_data::fp;
 
-            return { type, sizeof( concrete_t ) * 8, val };
+            return { type, bitwidth_v< concrete_t >, val };
         }
 
         static constant lift_any()

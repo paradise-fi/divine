@@ -109,6 +109,9 @@ namespace __lava
     using f32 = float;
     using f64 = double;
 
+    template< typename type >
+    constexpr int bitwidth_v = std::is_same_v< type, bool > ? 1 : sizeof( type ) * 8;
+
     template< typename self_t >
     struct domain_mixin
     {
