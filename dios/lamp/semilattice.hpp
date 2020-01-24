@@ -159,6 +159,9 @@ namespace __lamp
         template< typename val_t >
         static self lift( const val_t &val ) { return sl::lift_dom::lift( val ); }
 
+        template< typename val_t >
+        static self any() { return sl::any_dom::template any< val_t >(); }
+
         static self assume( self a, self b, bool c ) { return op( wrap( _assume, c ), a, b ); }
         static tristate to_tristate( self a ) { return op( run( _tristate ), a ); }
 
