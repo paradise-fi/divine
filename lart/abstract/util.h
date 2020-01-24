@@ -275,7 +275,6 @@ namespace lart::abstract
         {
             return util::is_one_of< llvm::StoreInst
                                   , llvm::LoadInst
-                                  , llvm::GetElementPtrInst
                                   >( inst );
         };
 
