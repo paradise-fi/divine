@@ -217,6 +217,9 @@ void with_bc::process_options()
         for ( auto &l : _linkLibs )
             _bc_opts.ccopts.push_back( "-l" + l );
     }
+
+    if ( _bc_opts.symbolic && _bc_opts.lamp_config.empty() )
+        _bc_opts.lamp_config = "symbolic";
 }
 
 template< typename I, typename O >
