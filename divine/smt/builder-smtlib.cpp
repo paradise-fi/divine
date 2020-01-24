@@ -24,7 +24,6 @@ namespace divine::smt::builder
 {
 
 using namespace std::literals;
-namespace smt = brick::smt;
 
 SMTLib2::Node SMTLib2::define( Node def )
 {
@@ -34,77 +33,55 @@ SMTLib2::Node SMTLib2::define( Node def )
     return _ctx.define( name, def );
 }
 
-SMTLib2::Node SMTLib2::variable( Variable var )
+SMTLib2::Node SMTLib2::variable( int id, int bw )
 {
-    auto name = "var_" + std::to_string( var.id );
-    switch ( var.type() ) {
-        case smt::Type::Bool:
-            ASSERT_EQ( var.bitwidth(), 1 );
-            return _ctx.variable( _ctx.boolT(), name );
-        case smt::Type::Int:
-            return _ctx.variable( _ctx.bitvecT( var.bitwidth() ), name );
-        case smt::Type::Float:
-            ASSERT( var.bitwidth() > 1 );
-            return _ctx.variable( _ctx.floatT( var.bitwidth() ), name );
-    }
-}
-
-SMTLib2::Node SMTLib2::constant( Constant con )
-{
-   switch ( con.type() )
-   {
-        case smt::Type::Bool:
-            ASSERT_EQ( con.bitwidth(), 1 );
-            return constant( static_cast< bool >( con.value ) );
-        case smt::Type::Int:
-            return _ctx.bitvec( con.bitwidth(), con.value );
-        case smt::Type::Float:
-            ASSERT( con.bitwidth() > 1 );
-            return _ctx.floatv( con.bitwidth(), con.value );
-    }
-    UNREACHABLE( "unknown constant type", con.type() );
+    auto name = "var_" + std::to_string( id );
+    return _ctx.variable( _ctx.bitvecT( bw ), name );
 }
 
 SMTLib2::Node SMTLib2::constant( bool v )
 {
-    return v ? _ctx.symbol( 1, smt::Type::Bool, "true" ) : _ctx.symbol( 1, smt::Type::Bool, "false" );
+    return v ? _ctx.symbol( 1, Node::t_bool, "true" ) : _ctx.symbol( 1, Node::t_bool, "false" );
 }
 
-SMTLib2::Node SMTLib2::constant( smt::Bitwidth bw, uint64_t value )
+SMTLib2::Node SMTLib2::constant( uint64_t value, int bw )
 {
     return _ctx.bitvec( bw, value );
 }
 
-SMTLib2::Node SMTLib2::unary( Unary unary, Node arg )
+SMTLib2::Node SMTLib2::unary( brq::smt_op op, Node arg, int bw )
 {
-    auto bw = unary.bw;
+    if ( op == op_t::bv_zfit )
+        op = bw > arg.bw ? op_t::bv_zext : op_t::bv_trunc;
 
-    switch ( unary.op )
+    switch ( op )
     {
-        case Op::Trunc:
+        case op_t::bv_trunc:
         {
             ASSERT_LEQ( bw, arg.bw );
             if ( arg.bw == bw )
                 return arg;
             auto op = _ctx.extract( bw - 1, 0, arg );
             if ( bw == 1 )
-                op = _ctx.binop< Op::Eq >( bw, op, _ctx.bitvec( 1, 1 ) );
+                op = _ctx.binop< op_t::eq >( bw, op, _ctx.bitvec( 1, 1 ) );
             return define( op );
         }
-        case Op::ZExt:
+
+        case op_t::bv_zext:
             ASSERT_LEQ( arg.bw, bw );
             if ( arg.bw == bw )
                 return arg;
             return define( arg.bw > 1
-                           ? _ctx.binop< Op::Concat >( bw, _ctx.bitvec( bw - arg.bw, 0 ), arg )
+                           ? _ctx.binop< op_t::bv_concat >( bw, _ctx.bitvec( bw - arg.bw, 0 ), arg )
                            : _ctx.ite( arg, _ctx.bitvec( bw, 1 ), _ctx.bitvec( bw, 0 ) ) );
-        case Op::SExt:
+
+        case op_t::bv_sext:
             ASSERT_LEQ( arg.bw, bw );
             if ( arg.bw == bw )
                 return arg;
             if ( arg.bw == 1 )
             {
-                auto ones = _ctx.unop< Op::Not >( bw, _ctx.bitvec( bw, 0 ) ),
+                auto ones = _ctx.unop< op_t::bv_not >( bw, _ctx.bitvec( bw, 0 ) ),
                    zeroes = _ctx.bitvec( bw, 0 );
                 return define( _ctx.ite( arg, ones, zeroes ) );
             }
@@ -113,128 +90,117 @@ SMTLib2::Node SMTLib2::unary( Unary unary, Node arg )
                 int extbw = bw - arg.bw;
                 auto one_ext = _ctx.bitvec( extbw, brick::bitlevel::ones< uint64_t >( extbw ) ),
                        z_ext = _ctx.bitvec( extbw, 0 ),
-                        sign = _ctx.binop< Op::Eq >( 1, _ctx.bitvec( 1, 1 ),
+                        sign = _ctx.binop< op_t::eq >( 1, _ctx.bitvec( 1, 1 ),
                                                           _ctx.extract( arg.bw - 1, arg.bw - 1, arg ) );
-                return define( _ctx.binop< Op::Concat >( bw, _ctx.ite( sign, one_ext, z_ext ), arg ) );
+                return define( _ctx.binop< op_t::bv_concat >( bw, _ctx.ite( sign, one_ext, z_ext ),
+                                                              arg ) );
             }
-        case Op::FPExt:
-            ASSERT_LT( arg.bw, bw );
-            return _ctx.cast< Op::FPExt >( bw, arg );
-        case Op::FPTrunc:
-            ASSERT_LT( bw, arg.bw );
-            return _ctx.cast< Op::FPTrunc >( bw, arg );
-        case Op::FPToSInt:
-            ASSERT_EQ( arg.bw, bw );
-            return _ctx.cast< Op::FPToSInt >( bw, arg );
-        case Op::FPToUInt:
-            ASSERT_EQ( arg.bw, bw );
-            return _ctx.cast< Op::FPToUInt >( bw, arg );
-        case Op::SIntToFP:
-            ASSERT_EQ( arg.bw, bw );
-            return _ctx.cast< Op::SIntToFP >( bw, arg );
-        case Op::UIntToFP:
-            ASSERT_EQ( arg.bw, bw );
-            return _ctx.cast< Op::UIntToFP >( bw, arg );
-        case Op::Not:
+
+        case op_t::fp_ext:
+        case op_t::fp_trunc:
+        case op_t::fp_tosbv:
+        case op_t::fp_toubv:
+        case op_t::bv_stofp:
+        case op_t::bv_utofp:
+            return _ctx.cast( op, bw, arg );
+
+        case op_t::bv_not:
+        case op_t::bool_not:
             ASSERT_EQ( arg.bw, bw );
             ASSERT_EQ( bw, 1 );
-            return define( arg.is_bool() ? _ctx.unop< Op::Not >( 1, arg )
-                                         : _ctx.unop< Op::BvNot >( 1, arg ) );
-        case Op::Extract:
-            ASSERT_LT( bw, arg.bw );
-            return define( _ctx.extract( unary.from, unary.to, arg ) );
+            return define( arg.is_bool() ? _ctx.unop< op_t::bool_not >( 1, arg )
+                                         : _ctx.unop< op_t::bv_not >( 1, arg ) );
+
         default:
-            UNREACHABLE( "unknown unary operation", unary.op );
+            UNREACHABLE( "unknown unary operation", op );
     }
 }
 
-SMTLib2::Node SMTLib2::binary( Binary bin, Node a, Node b )
+SMTLib2::Node SMTLib2::extract( Node arg, std::pair< int, int > bounds )
 {
-    auto bw = bin.bw;
+    return define( _ctx.extract( bounds.second, bounds.first, arg ) );
+}
+
+SMTLib2::Node SMTLib2::binary( brq::smt_op op, Node a, Node b, int bw )
+{
     if ( a.is_bv() && b.is_bv() )
     {
-        switch ( bin.op )
+        switch ( op )
         {
-#define MAP_OP_ARITH( OP ) case Op::Bv ## OP:                          \
-            ASSERT_EQ( bw, a.bw );                                 \
-            return define( _ctx.binop< Op::Bv ## OP >( bw, a, b ) );
-            MAP_OP_ARITH( Add );
-            MAP_OP_ARITH( Sub );
-            MAP_OP_ARITH( Mul );
-            MAP_OP_ARITH( SDiv );
-            MAP_OP_ARITH( UDiv );
-            MAP_OP_ARITH( SRem );
-            MAP_OP_ARITH( URem );
-            MAP_OP_ARITH( Shl ); // NOTE: LLVM & SMT-LIB both require args to shift to have same type
-            MAP_OP_ARITH( AShr );
-            MAP_OP_ARITH( LShr );
-            MAP_OP_ARITH( And );
-            MAP_OP_ARITH( Or );
-            MAP_OP_ARITH( Xor );
-#undef MAP_OP_ARITH
+            case op_t::bv_add:
+            case op_t::bv_sub:
+            case op_t::bv_mul:
+            case op_t::bv_sdiv:
+            case op_t::bv_udiv:
+            case op_t::bv_srem:
+            case op_t::bv_urem:
+            case op_t::bv_shl:
+            case op_t::bv_ashr:
+            case op_t::bv_lshr:
+            case op_t::bv_and:
+            case op_t::bv_or:
+            case op_t::bv_xor:
+                ASSERT_EQ( a.bw, b.bw );
+                return define( _ctx.expr( bw, op, { a, b } ) );
 
-#define MAP_OP_CMP( OP ) case Op::Bv ## OP:                        \
-            ASSERT_EQ( bw, 1 );                                    \
-            return define( _ctx.binop< Op::Bv ## OP >( bw, a, b ) );
-            MAP_OP_CMP( ULE );
-            MAP_OP_CMP( ULT );
-            MAP_OP_CMP( UGE );
-            MAP_OP_CMP( UGT );
-            MAP_OP_CMP( SLE );
-            MAP_OP_CMP( SLT );
-            MAP_OP_CMP( SGE );
-            MAP_OP_CMP( SGT );
-#undef MAP_OP_CMP
-            case Op::Eq:
+            case op_t::bv_ule:
+            case op_t::bv_ult:
+            case op_t::bv_uge:
+            case op_t::bv_ugt:
+            case op_t::bv_sle:
+            case op_t::bv_slt:
+            case op_t::bv_sge:
+            case op_t::bv_sgt:
+            case op_t::eq:
+                ASSERT_EQ( bw, 1, op );
+                return define( _ctx.expr( bw, op, { a, b } ) );
+
+            case op_t::neq:
                 ASSERT_EQ( bw, 1 );
-                return define( _ctx.binop< Op::Eq >( bw, a, b ) );
-            case Op::NE:
-                ASSERT_EQ( bw, 1 );
-                return define( _ctx.unop< Op::Not >( bw, _ctx.binop< Op::Eq >( bw, a, b ) ) );
-            case Op::Concat:
+                return define( _ctx.unop< op_t::bool_not >( bw, _ctx.binop< op_t::eq >( bw, a, b ) ) );
+
+            case op_t::bv_concat:
                 ASSERT_EQ( bw, a.bw + b.bw );
-                return define( _ctx.binop< Op::Concat >( bw, a, b ) );
+                return define( _ctx.binop< op_t::bv_concat >( bw, a, b ) );
+
             default:
-                UNREACHABLE( "unknown binary operation", bin.op );
+                UNREACHABLE( "unknown binary operation:", a, op, b, _ctx.defs );
         }
     }
     else if ( a.is_float() && b.is_float() )
     {
-        smt::Node node = a;
-        switch ( bin.op )
-        {
-#define MAP_OP_FLOAT_ARITH( OP ) case Op::OP:                   \
-            ASSERT_EQ( bw, a.bw );                              \
-            return define( _ctx.fpbinop< Op:: OP >( bw, a, b ) );
-            MAP_OP_FLOAT_ARITH( FpAdd );
-            MAP_OP_FLOAT_ARITH( FpSub );
-            MAP_OP_FLOAT_ARITH( FpMul );
-            MAP_OP_FLOAT_ARITH( FpDiv );
-            MAP_OP_FLOAT_ARITH( FpRem );
-#undef MAP_OP_FLOAT_ARITH
+        Node node = a;
 
-#define MAP_OP_FCMP( OP ) case Op::OP:                          \
-            ASSERT_EQ( bw, 1 );                                 \
-            return define( _ctx.fpbinop< Op:: OP >( bw, a, b ) );
-            MAP_OP_FCMP( FpFalse );
-            MAP_OP_FCMP( FpOEQ );
-            MAP_OP_FCMP( FpOGT );
-            MAP_OP_FCMP( FpOGE );
-            MAP_OP_FCMP( FpOLT );
-            MAP_OP_FCMP( FpOLE );
-            MAP_OP_FCMP( FpONE );
-            MAP_OP_FCMP( FpORD );
-            MAP_OP_FCMP( FpUEQ );
-            MAP_OP_FCMP( FpUGT );
-            MAP_OP_FCMP( FpUGE );
-            MAP_OP_FCMP( FpULT );
-            MAP_OP_FCMP( FpULE );
-            MAP_OP_FCMP( FpUNE );
-            MAP_OP_FCMP( FpUNO );
-            MAP_OP_FCMP( FpTrue );
-#undef MAP_OP_FCMP
+        switch ( op )
+        {
+            case op_t::fp_add:
+            case op_t::fp_sub:
+            case op_t::fp_mul:
+            case op_t::fp_div:
+            case op_t::fp_rem:
+                return define( _ctx.expr( bw, op, { a, b }, brq::smtlib_rounding::RNE ) );
+
+            case op_t::fp_false:
+            case op_t::fp_true:
+            case op_t::fp_oeq:
+            case op_t::fp_ogt:
+            case op_t::fp_oge:
+            case op_t::fp_olt:
+            case op_t::fp_ole:
+            // case op_t::fp_one:
+            case op_t::fp_ord:
+            case op_t::fp_ueq:
+            case op_t::fp_ugt:
+            case op_t::fp_uge:
+            case op_t::fp_ult:
+            case op_t::fp_ule:
+            // case op_t::fp_une:
+            case op_t::fp_uno:
+                ASSERT_EQ( bw, 1 );
+                return define( _ctx.expr( bw, op, { a, b }, brq::smtlib_rounding::RNE ) );
+
             default:
-                UNREACHABLE( "unknown binary operation", bin.op );
+                UNREACHABLE( "unknown binary operation", op );
         }
     }
     else
@@ -245,60 +211,61 @@ SMTLib2::Node SMTLib2::binary( Binary bin, Node a, Node b )
         if ( a.is_bv() )
         {
             ASSERT_EQ( a.bw, 1 );
-            a = define( _ctx.binop< Op::Eq >( 1, a, _ctx.bitvec( 1, 1 ) ) );
+            a = define( _ctx.binop< op_t::eq >( 1, a, _ctx.bitvec( 1, 1 ) ) );
         }
 
         if ( b.is_bv() )
         {
             ASSERT_EQ( b.bw, 1 );
-            b = define( _ctx.binop< Op::Eq >( 1, b, _ctx.bitvec( 1, 1 ) ) );
+            b = define( _ctx.binop< op_t::eq >( 1, b, _ctx.bitvec( 1, 1 ) ) );
         }
 
-        switch ( bin.op )
+        switch ( op )
         {
-            case Op::Xor:
-            case Op::BvSub:
-            case Op::BvXor:
-                return define( _ctx.binop< Op::Xor >( 1, a, b ) );
-            case Op::BvAdd:
-                return define( _ctx.binop< Op::And >( 1, a, b ) );
-            case Op::BvUDiv:
-            case Op::BvSDiv:
+            case op_t::bool_xor:
+            case op_t::bv_sub:
+            case op_t::bv_xor:
+                return define( _ctx.binop< op_t::bool_xor >( 1, a, b ) );
+            case op_t::bv_add:
+                return define( _ctx.binop< op_t::bool_and >( 1, a, b ) );
+            case op_t::bv_udiv:
+            case op_t::bv_sdiv:
                 return a;
-            case Op::BvURem:
-            case Op::BvSRem:
-            case Op::BvShl:
-            case Op::BvLShr:
+            case op_t::bv_urem:
+            case op_t::bv_srem:
+            case op_t::bv_shl:
+            case op_t::bv_lshr:
                 return constant( false );
-            case Op::BvAShr:
+            case op_t::bv_ashr:
                 return a;
-            case Op::Or:
-            case Op::BvOr:
-                return define( _ctx.binop< Op::Or >( 1, a, b ) );
-            case Op::And:
-            case Op::BvAnd:
-                return define( _ctx.binop< Op::And >( 1, a, b ) );
-            case Op::BvUGE:
-            case Op::BvSLE:
-                return define( _ctx.binop< Op::Or >( 1, a, _ctx.unop< Op::Not >( 1, b ) ) );
-            case Op::BvULE:
-            case Op::BvSGE:
-                return define( _ctx.binop< Op::Or >( 1, b, _ctx.unop< Op::Not >( 1, a ) ) );
-            case Op::BvUGT:
-            case Op::BvSLT:
-                return define( _ctx.binop< Op::And >( 1, a, _ctx.unop< Op::Not >( 1, b ) ) );
-            case Op::BvULT:
-            case Op::BvSGT:
-                return define( _ctx.binop< Op::And >( 1, b, _ctx.unop< Op::Not >( 1, a ) ) );
-            case Op::Eq:
-                return define( _ctx.binop< Op::Eq >( 1, a, b ) );
-            case Op::NE:
-                return define( _ctx.unop< Op::Not >( 1, _ctx.binop< Op::And >( 1, a, b ) ) );
+            case op_t::bool_or:
+            case op_t::bv_or:
+                return define( _ctx.binop< op_t::bool_or >( 1, a, b ) );
+            case op_t::constraint:
+            case op_t::bool_and:
+            case op_t::bv_and:
+                return define( _ctx.binop< op_t::bool_and >( 1, a, b ) );
+            case op_t::bv_uge:
+            case op_t::bv_sle:
+                return define( _ctx.binop< op_t::bool_or >( 1, a, _ctx.unop< op_t::bool_not >( 1, b ) ) );
+            case op_t::bv_ule:
+            case op_t::bv_sge:
+                return define( _ctx.binop< op_t::bool_or >( 1, b, _ctx.unop< op_t::bool_not >( 1, a ) ) );
+            case op_t::bv_ugt:
+            case op_t::bv_slt:
+                return define( _ctx.binop< op_t::bool_and >( 1, a, _ctx.unop< op_t::bool_not >( 1, b ) ) );
+            case op_t::bv_ult:
+            case op_t::bv_sgt:
+                return define( _ctx.binop< op_t::bool_and >( 1, b, _ctx.unop< op_t::bool_not >( 1, a ) ) );
+            case op_t::eq:
+                return define( _ctx.binop< op_t::eq >( 1, a, b ) );
+            case op_t::neq:
+                return define( _ctx.unop< op_t::bool_not >( 1, _ctx.binop< op_t::bool_and >( 1, a, b ) ) );
             default:
-                UNREACHABLE( "unknown boolean binary operation", bin.op );
+                UNREACHABLE( "unknown boolean binary operation", op );
         }
     }
-    UNREACHABLE( "unexpected operands", a, b, "to", bin.op );
+    UNREACHABLE( "unexpected operands", a, b, "to", op );
 }
 
 } // namespace divine::smt::builder

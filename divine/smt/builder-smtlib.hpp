@@ -27,19 +27,21 @@ namespace divine::smt::builder
 
 struct SMTLib2
 {
-    using Node = brick::smt::Node;
-    SMTLib2( brick::smt::Context &ctx, std::string suff = "", bool defs = true )
+    using Node = brq::smtlib_node;
+    using op_t = brq::smt_op;
+
+    SMTLib2( brq::smtlib_context &ctx, std::string suff = "", bool defs = true )
         : _ctx( ctx ), _suff( suff ), _use_defs( defs ) {}
 
-    Node unary( Unary op, Node n );
-    Node binary( Binary op, Node a, Node b );
-    Node constant( smt::Bitwidth bw, uint64_t value );
-    Node constant( Constant con );
+    Node unary( brq::smt_op op, Node n, int bw );
+    Node extract( Node n, std::pair< int, int > );
+    Node binary( brq::smt_op op, Node a, Node b, int bw );
+    Node constant( uint64_t value, int bw );
     Node constant( bool );
-    Node variable( Variable var );
+    Node variable( int id, int bw );
     Node define( Node def );
 
-    brick::smt::Context &_ctx;
+    brq::smtlib_context &_ctx;
     std::string _suff;
     bool _use_defs = true;
     int _def_counter = 0;
