@@ -80,9 +80,9 @@ namespace lart::abstract
         auto get_function_from_domain() const
         {
             if constexpr ( Taint::toBool( T ) )
-                return module->getFunction( "__lame_to_tristate" );
+                return module->getFunction( "__lamp_to_tristate" );
             if constexpr ( Taint::assume( T ) )
-                return module->getFunction( "__lame_assume" );
+                return module->getFunction( "__lamp_assume" );
 
             return lifter_function();
         }
@@ -90,7 +90,7 @@ namespace lart::abstract
         template< typename IRB >
         auto thaw( IRB & irb, llvm::Value * value ) const
         {
-            auto thawFn = llvm::cast< llvm::Function >( module->getFunction( "__lart_thaw" ) );
+            auto thawFn = llvm::cast< llvm::Function >( module->getFunction( "__lamp_melt" ) );
             ASSERT( thawFn, "Missing implementation of 'thaw' function." );
 
             auto fty = thawFn->getFunctionType();
@@ -102,7 +102,7 @@ namespace lart::abstract
         template< typename IRB >
         auto freeze( IRB & irb, llvm::Value * value, llvm::Value * addr ) const
         {
-            auto freezeFn = llvm::cast< llvm::Function >( module->getFunction( "__lart_freeze" ) );
+            auto freezeFn = llvm::cast< llvm::Function >( module->getFunction( "__lamp_freeze" ) );
             ASSERT( freezeFn, "Missing implementation of 'freeze' function." );
 
             auto fty = freezeFn->getFunctionType();
@@ -528,7 +528,7 @@ namespace lart::abstract
         template< typename IRB >
         llvm::Value * lift( IRB &irb, llvm::FunctionType *fty, const std::string & tname ) const
         {
-            auto name = "__lart_abstract_lift_one_" + tname;
+            auto name = "__lamp_wrap_" + tname;
             auto impl = module->getFunction( name );
             if ( !impl )
                 brq::raise() << "Missing domain function " << name;
