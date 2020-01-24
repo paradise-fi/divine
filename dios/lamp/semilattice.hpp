@@ -46,7 +46,11 @@ namespace __lamp
             {
                 if ( idx == dom )
                 {
-                    if constexpr ( join( idx, doms::template idx< args_t > ... ) == idx )
+                    constexpr int joined = join( idx, doms::template idx< args_t > ... );
+                    static_assert( joined >= 0 );
+                    static_assert( ( ( doms::template idx< args_t > >= 0 ) && ... ) );
+
+                    if constexpr ( joined == idx )
                         return op( lift_to< typename doms::template type< idx > >( args ) ... );
                     else
                         __builtin_trap();
