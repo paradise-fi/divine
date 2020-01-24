@@ -5,7 +5,7 @@
 // V: v.return V_OPT: --leakcheck return TAGS: todo
 // V: v.state V_OPT: --leakcheck state
 // V: v.exit V_OPT: --leakcheck exit TAGS: todo
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <array>
 
@@ -13,14 +13,14 @@
 #include <stdlib.h>
 
 void foo( int * addr ) {
-    auto val = __sym_val_i32();
+    auto val = __lamp_any_i32();
     *addr = val;
 }
 
 int main() {
     int buff;
     int * addr = &buff;
-    int val = __sym_val_i32();
+    int val = __lamp_any_i32();
     *addr = val;
     *addr = 10;
 

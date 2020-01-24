@@ -6,7 +6,7 @@
 // V: v.state  V_OPT: --leakcheck state
 // V: v.exit   V_OPT: --leakcheck exit
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <assert.h>
 #include <stdlib.h>
@@ -18,7 +18,7 @@ struct Widget {
 
 int main() {
     Widget w1, w2;
-    w1.b = __sym_val_i32();
+    w1.b = __lamp_any_i32();
 
     memcpy( &w2, &w1, sizeof( Widget ) );
     assert( w1.b == w2.b );

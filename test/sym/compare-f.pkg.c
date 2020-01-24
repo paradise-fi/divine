@@ -10,9 +10,9 @@
 #include <stdlib.h>
 #include <assert.h>
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 int main() {
-    int x = __sym_val_i32();
+    int x = __lamp_any_i32();
     assert( x <= 0 ); /* ERROR */
 }

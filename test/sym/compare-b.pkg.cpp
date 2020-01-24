@@ -6,13 +6,13 @@
 // V: v.O1 CC_OPT: -O1
 // V: v.O2 CC_OPT: -O2
 // V: v.Os CC_OPT: -Os
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <cassert>
 
 int main() {
-    uint64_t x = __sym_val_i64();
-    uint64_t y = __sym_val_i64();
+    uint64_t x = __lamp_any_i64();
+    uint64_t y = __lamp_any_i64();
 
     y = 0;
 

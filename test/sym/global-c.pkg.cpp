@@ -8,7 +8,7 @@
 // V: v.Os CC_OPT: -Os
 // V: v.leakcheck CC_OPT: -Os V_OPT: --leakcheck exit TAGS: todo
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 #include <cassert>
 #include <cstdint>
 
@@ -19,7 +19,7 @@ struct Widget {
 Widget w;
 
 int main() {
-    int val = __sym_val_i32();
+    int val = __lamp_any_i32();
     w.value = val % 10;
     assert( w.value < 10 );
 }

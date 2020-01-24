@@ -1,13 +1,13 @@
 /* TAGS: sym c++ min todo */
 /* VERIFY_OPTS: --symbolic */
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <cstdint>
 #include <cassert>
 
 int main() {
     uint8_t array[ 4 ] = { 0 };
-    uint8_t x = __sym_val_i8();
+    uint8_t x = __lamp_any_i8();
     array[ 1 ] = x;
 
     uint32_t val = *reinterpret_cast< uint32_t * >( array );

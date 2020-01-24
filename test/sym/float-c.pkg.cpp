@@ -6,13 +6,13 @@
 // V: v.O1 CC_OPT: -O1
 // V: v.O2 CC_OPT: -O2
 // V: v.Os CC_OPT: -Os
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <cstdint>
 #include <cassert>
 
 int main() {
-    float x = __sym_val_float32();
+    float x = __lamp_any_float32();
     float y = 3.14f;
     float z = x + y;
     assert( z == x + 3.14f );

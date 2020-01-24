@@ -1,7 +1,7 @@
 /* TAGS: sym c todo */
 /* VERIFY_OPTS: --symbolic */
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 #include <stdio.h>
 #include <assert.h>
 

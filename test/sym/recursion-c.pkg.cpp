@@ -6,7 +6,7 @@
 // V: v.O1 CC_OPT: -O1
 // V: v.O2 CC_OPT: -O2
 // V: v.Os CC_OPT: -Os
-#include <rst/domains.h>
+#include <sys/lamp.h>
 #include <cassert>
 #include <limits>
 #include <array>
@@ -46,7 +46,7 @@ int main() {
     auto ns = std::array< Node, 3 >( { 1, 2, 3 } );
     auto list = List< decltype( ns ) >( ns );
 
-    unsigned int i = __sym_val_i32();
+    unsigned int i = __lamp_any_i32();
     auto res = list.at( i );
     if ( i > 2 )
         assert( res == nullptr );

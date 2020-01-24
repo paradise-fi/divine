@@ -2,13 +2,13 @@
 /* VERIFY_OPTS: --symbolic */
 /* CC_OPTS: */
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 #include <ctype.h>
 #include <assert.h>
 
 int main()
 {
-    unsigned char x = __sym_val_i8();
+    unsigned char x = __lamp_any_i8();
 
     // 0-9
     if ( x >= 48 && x <= 57 )

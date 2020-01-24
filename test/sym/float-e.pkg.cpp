@@ -6,7 +6,7 @@
 // V: v.O1 CC_OPT: -O1
 // V: v.O2 CC_OPT: -O2
 // V: v.Os CC_OPT: -Os
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <cstdlib>
 #include <cstdint>
@@ -14,7 +14,7 @@
 
 int main() {
     float * a = static_cast< float * >( malloc( sizeof( float ) ) );
-    float y = __sym_val_float32();
+    float y = __lamp_any_float32();
     *a = y;
     assert( *a == y );
     free( a );

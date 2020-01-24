@@ -6,7 +6,7 @@
 // V: v.O1 CC_OPT: -O1 TAGS: todo
 // V: v.O2 CC_OPT: -O2
 // V: v.Os CC_OPT: -Os
-#include <rst/domains.h>
+#include <sys/lamp.h>
 #include <cstdint>
 #include <cassert>
 
@@ -18,7 +18,7 @@ struct S {
 
 int main() {
     S a, b;
-    a.y = __sym_val_i32();
+    a.y = __lamp_any_i32();
     b = a; // TODO peeking from mem copied value
     assert( a.x == b.x && a.y == b.y );
 }

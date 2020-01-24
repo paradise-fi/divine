@@ -8,7 +8,7 @@
 // V: v.Os CC_OPT: -Os
 // V: v.leakcheck CC_OPT: -Os V_OPT: --leakcheck exit TAGS: todo
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 #include <cassert>
 
 int x;
@@ -16,7 +16,7 @@ int x;
 int get() { return x; }
 
 int main() {
-    int val = __sym_val_i32();
+    int val = __lamp_any_i32();
     x = val;
 
     int y = get();

@@ -9,7 +9,7 @@
 // test correct unstash after casted sym constructor
 
 int main() {
-	int x = __sym_val_i32();
-	int y = __sym_val_i32();
+	int x = __lamp_any_i32();
+	int y = __lamp_any_i32();
 	int z = x + y;
 }

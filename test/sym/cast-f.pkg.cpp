@@ -6,24 +6,29 @@
 // V: v.O1 CC_OPT: -O1
 // V: v.O2 CC_OPT: -O2
 // V: v.Os CC_OPT: -Os
-#include <rst/domains.h>
+#include <sys/lamp.h>
 #include <cassert>
 #include <limits>
 
-int nondet() {
-    return __sym_val_i32();
+int nondet()
+{
+    return __lamp_any_i32();
 }
 
-int main() {
-    union {
+int main()
+{
+    union
+    {
         int x;
         short y;
     };
 
     x = nondet();
+
     if ( short( x ) < 0 )
         return 0;
     ++y;
+
     assert( y == -32768 || y >= 1 );
     assert( y != -32768 ); /* ERROR */
 }

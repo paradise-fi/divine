@@ -5,14 +5,14 @@
 #include <cassert>
 
 extern "C" {
-int __sym_val_i32();
+int __lamp_any_i32();
 }
 
 struct S { int a, b, c; };
 
 S foo() {
     S s;
-    s.b = __sym_val_i32();
+    s.b = __lamp_any_i32();
     return s;
 }
 

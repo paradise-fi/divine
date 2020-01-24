@@ -1,7 +1,7 @@
 /* TAGS: sym todo */
 /* VERIFY_OPTS: --symbolic */
 #include <assert.h>
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 struct Base
 {
@@ -17,7 +17,7 @@ int main()
 {
     Base *adder = new Derived;
 
-    int a = __sym_val_i32();
+    int a = __lamp_any_i32();
     int b = 1;
 
     if ( a > 0 && a < 100 )

@@ -6,7 +6,8 @@
 
 bool __VERIFIER_nondet_bool();
 
-int main() {
+int main()
+{
     bool a = __VERIFIER_nondet_bool();
     bool b = !a;
 

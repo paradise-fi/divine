@@ -6,14 +6,14 @@
 // V: v.O1 CC_OPT: -O1
 // V: v.O2 CC_OPT: -O2
 // V: v.Os CC_OPT: -Os
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <cstdlib>
 #include <cassert>
 
 int main() {
     int *a = static_cast< int* >( malloc( sizeof(int) ) );
-    int v = __sym_val_i32();
+    int v = __lamp_any_i32();
     *a = v;
     assert( v == *a );
     free( a );

@@ -1,7 +1,7 @@
 /* TAGS: sym c todo */
 /* VERIFY_OPTS: --symbolic */
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 #include <stdlib.h>
 #include <assert.h>
 
@@ -14,7 +14,7 @@ int main()
 {
     int arr[6];
     for( unsigned i = 0; i < 6; ++i )
-        arr[i] = __sym_val_i32();
+        arr[i] = __lamp_any_i32();
 
     qsort( arr, 6, sizeof( int ), le );
 

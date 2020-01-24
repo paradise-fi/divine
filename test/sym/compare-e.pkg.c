@@ -10,9 +10,9 @@
 #include <stdlib.h>
 #include <assert.h>
 
-uint32_t __sym_val_i32(); // test bitcast from different function type
+uint32_t __lamp_any_i32(); // test bitcast from different function type
 
 int main() {
-    int x = __sym_val_i32();
+    int x = __lamp_any_i32();
     assert( x <= 0 ); /* ERROR */
 }

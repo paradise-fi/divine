@@ -2,7 +2,7 @@
 /* VERIFY_OPTS: --symbolic */
 /* CC_OPTS: */
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 #include <assert.h>
 
 int value;
@@ -12,7 +12,7 @@ int get(int * addr) {
 }
 
 int main(void) {
-    value = __sym_val_i32();
+    value = __lamp_any_i32();
 
     int loaded = get(&value);
     assert( loaded == value );

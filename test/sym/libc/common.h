@@ -32,7 +32,7 @@ char upper() { return ascii( 'A', 26 ); }
 
 char ascii( int (*pred)( int ) )
 {
-    char c = __sym_val_i8();
+    char c = __lamp_any_i8();
     assume( pred( c ) );
     return c;
 }
