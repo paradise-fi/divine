@@ -10,6 +10,9 @@ namespace __lamp
     {
         using doms = domain_list< unit, constant >;
 
+        using lift_dom = constant;
+        using any_dom = unit;
+
         static constexpr int join( int a, int b ) noexcept
         {
             if ( a == doms::idx< constant > ) return b;
