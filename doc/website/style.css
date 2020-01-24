@@ -297,6 +297,7 @@ td.test a         { padding: 4px; }
 
 td.test-passed, a.test-passed           { color: black; }
 td.test-failed, a.test-failed           { background-color: darkred; color: white; }
+td.test-timeout, a.test-timeout         { background-color: darkmagenta; color: white; }
 td.test-skipped, a.test-skipped         { color: black; }
 td.test-started, a.test-started         { color: black; }
 td.test-interrupted, a.test-interrupted { background-color: #999900; color: white; }
