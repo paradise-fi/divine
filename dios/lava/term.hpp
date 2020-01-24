@@ -105,7 +105,7 @@ namespace __lava
         }
 
         using op = brq::smt_op;
-        using tt = term;
+        using tt = const term &;
         using bw = uint8_t;
 
         static term cast( term arg, bitwidth_t bw, op o )
@@ -114,8 +114,8 @@ namespace __lava
             return { arg, atom };
         }
 
-        static tt assume( tt value, tt constraint, bool expect );
-        static tt op_thaw( tt term, uint8_t bw )
+        static term assume( tt value, tt constraint, bool expect );
+        static term op_thaw( tt term, uint8_t bw )
         {
             /* TODO interval-based peek & poke */
             return cast( term, bw, op::bv_zfit );
@@ -128,65 +128,66 @@ namespace __lava
             return { t, atom };
         }
 
-        static tt op_add ( tt a, tt b ) { return { a, b, op::bv_add  }; }
-        static tt op_sub ( tt a, tt b ) { return { a, b, op::bv_sub  }; }
-        static tt op_mul ( tt a, tt b ) { return { a, b, op::bv_mul  }; }
-        static tt op_sdiv( tt a, tt b ) { return div( a, b, op::bv_sdiv ); }
-        static tt op_udiv( tt a, tt b ) { return div( a, b, op::bv_udiv ); }
-        static tt op_srem( tt a, tt b ) { return div( a, b, op::bv_srem ); }
-        static tt op_urem( tt a, tt b ) { return div( a, b, op::bv_urem ); }
+        static term op_add ( tt a, tt b ) { return { a, b, op::bv_add  }; }
+        static term op_sub ( tt a, tt b ) { return { a, b, op::bv_sub  }; }
+        static term op_mul ( tt a, tt b ) { return { a, b, op::bv_mul  }; }
+        static term op_sdiv( tt a, tt b ) { return div( a, b, op::bv_sdiv ); }
+        static term op_udiv( tt a, tt b ) { return div( a, b, op::bv_udiv ); }
+        static term op_srem( tt a, tt b ) { return div( a, b, op::bv_srem ); }
+        static term op_urem( tt a, tt b ) { return div( a, b, op::bv_urem ); }
 
-        static tt op_fadd( tt a, tt b ) { return { a, b, op::fp_add }; }
-        static tt op_fsub( tt a, tt b ) { return { a, b, op::fp_sub }; }
-        static tt op_fmul( tt a, tt b ) { return { a, b, op::fp_mul }; }
-        static tt op_fdiv( tt a, tt b ) { return div( a, b, op::fp_div ); }
-        static tt op_frem( tt a, tt b ) { return div( a, b, op::fp_rem ); }
+        static term op_fadd( tt a, tt b ) { return { a, b, op::fp_add }; }
+        static term op_fsub( tt a, tt b ) { return { a, b, op::fp_sub }; }
+        static term op_fmul( tt a, tt b ) { return { a, b, op::fp_mul }; }
+        static term op_fdiv( tt a, tt b ) { return div( a, b, op::fp_div ); }
+        static term op_frem( tt a, tt b ) { return div( a, b, op::fp_rem ); }
 
-        static tt op_shl ( tt a, tt b ) { return { a, b, op::bv_shl  }; }
-        static tt op_ashr( tt a, tt b ) { return { a, b, op::bv_ashr }; }
-        static tt op_lshr( tt a, tt b ) { return { a, b, op::bv_lshr }; }
-        static tt op_and ( tt a, tt b ) { return { a, b, op::bv_and  }; }
-        static tt op_or  ( tt a, tt b ) { return { a, b, op::bv_or   }; }
-        static tt op_xor ( tt a, tt b ) { return { a, b, op::bv_xor  }; }
+        static term op_shl ( tt a, tt b ) { return { a, b, op::bv_shl  }; }
+        static term op_ashr( tt a, tt b ) { return { a, b, op::bv_ashr }; }
+        static term op_lshr( tt a, tt b ) { return { a, b, op::bv_lshr }; }
+        static term op_and ( tt a, tt b ) { return { a, b, op::bv_and  }; }
+        static term op_or  ( tt a, tt b ) { return { a, b, op::bv_or   }; }
+        static term op_xor ( tt a, tt b ) { return { a, b, op::bv_xor  }; }
 
-        static tt op_eq ( tt a, tt b ) { return { a, b, op::eq }; };
-        static tt op_neq( tt a, tt b ) { return { a, b, op::neq }; };
-        static tt op_ugt( tt a, tt b ) { return { a, b, op::bv_ugt }; };
-        static tt op_uge( tt a, tt b ) { return { a, b, op::bv_uge }; };
-        static tt op_ult( tt a, tt b ) { return { a, b, op::bv_ult }; };
-        static tt op_ule( tt a, tt b ) { return { a, b, op::bv_ule }; };
-        static tt op_sgt( tt a, tt b ) { return { a, b, op::bv_sgt }; };
-        static tt op_sge( tt a, tt b ) { return { a, b, op::bv_sge }; };
-        static tt op_slt( tt a, tt b ) { return { a, b, op::bv_slt }; };
-        static tt op_sle( tt a, tt b ) { return { a, b, op::bv_sle }; };
+        static term op_eq ( tt a, tt b ) { return { a, b, op::eq }; };
+        static term op_ne ( tt a, tt b ) { return { a, b, op::neq }; };
+        static term op_ugt( tt a, tt b ) { return { a, b, op::bv_ugt }; };
+        static term op_uge( tt a, tt b ) { return { a, b, op::bv_uge }; };
+        static term op_ult( tt a, tt b ) { return { a, b, op::bv_ult }; };
+        static term op_ule( tt a, tt b ) { return { a, b, op::bv_ule }; };
+        static term op_sgt( tt a, tt b ) { return { a, b, op::bv_sgt }; };
+        static term op_sge( tt a, tt b ) { return { a, b, op::bv_sge }; };
+        static term op_slt( tt a, tt b ) { return { a, b, op::bv_slt }; };
+        static term op_sle( tt a, tt b ) { return { a, b, op::bv_sle }; };
 
-        static tt op_foeq( tt a, tt b ) { return { a, b, op::fp_oeq }; }
-        static tt op_fogt( tt a, tt b ) { return { a, b, op::fp_ogt }; }
-        static tt op_foge( tt a, tt b ) { return { a, b, op::fp_oge }; }
-        static tt op_folt( tt a, tt b ) { return { a, b, op::fp_olt }; }
-        static tt op_fole( tt a, tt b ) { return { a, b, op::fp_ole }; }
-        static tt op_ford( tt a, tt b ) { return { a, b, op::fp_ord }; }
-        static tt op_funo( tt a, tt b ) { return { a, b, op::fp_uno }; }
-        static tt op_fueq( tt a, tt b ) { return { a, b, op::fp_ueq }; }
-        static tt op_fugt( tt a, tt b ) { return { a, b, op::fp_ugt }; }
-        static tt op_fuge( tt a, tt b ) { return { a, b, op::fp_uge }; }
-        static tt op_fult( tt a, tt b ) { return { a, b, op::fp_ult }; }
-        static tt op_fule( tt a, tt b ) { return { a, b, op::fp_ule }; }
+        static term op_foeq( tt a, tt b ) { return { a, b, op::fp_oeq }; }
+        static term op_fogt( tt a, tt b ) { return { a, b, op::fp_ogt }; }
+        static term op_foge( tt a, tt b ) { return { a, b, op::fp_oge }; }
+        static term op_folt( tt a, tt b ) { return { a, b, op::fp_olt }; }
+        static term op_fole( tt a, tt b ) { return { a, b, op::fp_ole }; }
+        static term op_ford( tt a, tt b ) { return { a, b, op::fp_ord }; }
+        static term op_funo( tt a, tt b ) { return { a, b, op::fp_uno }; }
+        static term op_fueq( tt a, tt b ) { return { a, b, op::fp_ueq }; }
+        static term op_fugt( tt a, tt b ) { return { a, b, op::fp_ugt }; }
+        static term op_fuge( tt a, tt b ) { return { a, b, op::fp_uge }; }
+        static term op_fult( tt a, tt b ) { return { a, b, op::fp_ult }; }
+        static term op_fule( tt a, tt b ) { return { a, b, op::fp_ule }; }
 
-        static tt op_ffalse( tt a, tt b ) { return { a, b, op::fp_false }; }
-        static tt op_ftrue( tt a, tt b ) { return { a, b, op::fp_true }; }
+        static term op_ffalse( tt a, tt b ) { return { a, b, op::fp_false }; }
+        static term op_ftrue( tt a, tt b ) { return { a, b, op::fp_true }; }
 
-        static tt op_trunc  ( tt a, bw w ) { return cast( a, w, op::bv_trunc ); }
-        static tt op_fptrunc( tt a, bw w ) { return cast( a, w, op::fp_trunc ); }
-        static tt op_sitofp ( tt a, bw w ) { return cast( a, w, op::bv_stofp ); }
-        static tt op_uitofp ( tt a, bw w ) { return cast( a, w, op::bv_utofp ); }
-        static tt op_zext   ( tt a, bw w ) { return cast( a, w, op::bv_zext ); }
-        static tt op_sext   ( tt a, bw w ) { return cast( a, w, op::bv_sext ); }
-        static tt op_fpext  ( tt a, bw w ) { return cast( a, w, op::fp_ext ); }
-        static tt op_fptosi ( tt a, bw w ) { return cast( a, w, op::fp_tosbv ); }
-        static tt op_fptoui ( tt a, bw w ) { return cast( a, w, op::fp_toubv ); }
+        static term op_trunc  ( tt a, bw w ) { return cast( a, w, op::bv_trunc ); }
+        static term op_fptrunc( tt a, bw w ) { return cast( a, w, op::fp_trunc ); }
+        static term op_sitofp ( tt a, bw w ) { return cast( a, w, op::bv_stofp ); }
+        static term op_uitofp ( tt a, bw w ) { return cast( a, w, op::bv_utofp ); }
+        static term op_zext   ( tt a, bw w ) { return cast( a, w, op::bv_zext ); }
+        static term op_zfit   ( tt a, bw w ) { return cast( a, w, op::bv_zfit ); }
+        static term op_sext   ( tt a, bw w ) { return cast( a, w, op::bv_sext ); }
+        static term op_fpext  ( tt a, bw w ) { return cast( a, w, op::fp_ext ); }
+        static term op_fptosi ( tt a, bw w ) { return cast( a, w, op::fp_tosbv ); }
+        static term op_fptoui ( tt a, bw w ) { return cast( a, w, op::fp_toubv ); }
 
-        static tt op_concat ( tt a, tt b ) { return { a, b, op::bv_concat }; }
+        static term op_concat ( tt a, tt b ) { return { a, b, op::bv_concat }; }
 
         // op_inttoptr
         // op_ptrtoint
