@@ -192,6 +192,7 @@ namespace __lava
         static st op_sitofp ( st, bw ) { return fail(); }
         static st op_uitofp ( st, bw ) { return fail(); }
         static st op_zext   ( st, bw ) { return fail(); }
+        static st op_zfit   ( st, bw ) { return fail(); }
         static st op_sext   ( st, bw ) { return fail(); }
         static st op_fpext  ( st, bw ) { return fail(); }
         static st op_fptosi ( st, bw ) { return fail(); }
