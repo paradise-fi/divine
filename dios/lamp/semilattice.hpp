@@ -94,24 +94,17 @@ namespace __lamp
         }
 
         template< typename op_t, typename... args_t >
-        static semilattice op( op_t o, const args_t & ... args )
+        static auto op( op_t o, const args_t & ... args )
         {
-            semilattice rv;
             int dom = join( args.tag() ... );
             TRACE( "domain join gave", dom );
 
-            auto run_op = [&]( const auto &arg, const auto & ... args )
-            {
-                rv = o( arg )( arg, args... );
-            };
-
             auto downcasted = [&]( const auto & ... args )
             {
-                in_domain( dom, run_op, args... );
+                return in_domain( dom, o, args... );
             };
 
-            cast( downcasted, args... );
-            return rv;
+            return cast( downcasted, args... );
         }
 
         static constexpr auto add = []( auto a ) { return decltype( a )::op_add; };
@@ -123,9 +116,21 @@ namespace __lamp
         static constexpr auto srem = []( auto a ) { return decltype( a )::op_srem; };
         static constexpr auto urem = []( auto a ) { return decltype( a )::op_urem; };
 
-        /* ... */
+        static constexpr auto run = []( const auto &op, const auto & ... bind  )
+        {
+            return [=]( const auto &arg, const auto & ... args )
+            {
+                return op( arg )( arg, args..., bind... );
+            };
+        };
 
-        using self = semilattice;
+        static constexpr auto wrap = []( const auto &op, const auto & ... bind  )
+        {
+            return [=]( const auto &arg, const auto & ... args )
+            {
+                return self( op( arg )( arg, args..., bind... ) );
+            };
+        };
 
         template< typename val_t >
         static self lift( const val_t &val ) { return doms::car_t::lift( val ); }
