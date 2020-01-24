@@ -23,6 +23,7 @@
 #include <divine/smt/builder.hpp>
 #include <divine/smt/extract.hpp>
 #include <vector>
+#include <brick-except>
 
 #if OPT_STP
 #include <stp/STPManager/STPManager.h>
