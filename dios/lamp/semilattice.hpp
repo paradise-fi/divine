@@ -116,6 +116,21 @@ namespace __lamp
         static constexpr auto srem = []( auto a ) { return decltype( a )::op_srem; };
         static constexpr auto urem = []( auto a ) { return decltype( a )::op_urem; };
 
+        static constexpr auto zext = []( auto a ) { return decltype( a )::op_zext; };
+        static constexpr auto sext = []( auto a ) { return decltype( a )::op_sext; };
+
+        static constexpr auto ne   = []( auto a ) { return decltype( a )::op_ne; };
+        static constexpr auto eq   = []( auto a ) { return decltype( a )::op_eq; };
+        static constexpr auto slt  = []( auto a ) { return decltype( a )::op_slt; };
+        static constexpr auto sgt  = []( auto a ) { return decltype( a )::op_sgt; };
+        static constexpr auto ult  = []( auto a ) { return decltype( a )::op_ult; };
+        static constexpr auto ugt  = []( auto a ) { return decltype( a )::op_ugt; };
+
+        static constexpr auto shl  = []( auto a ) { return decltype( a )::op_shl; };
+        static constexpr auto lshr = []( auto a ) { return decltype( a )::op_lshr; };
+        static constexpr auto ashr = []( auto a ) { return decltype( a )::op_ashr; };
+
+        static constexpr auto trunc = []( auto a ) { return decltype( a )::op_trunc; };
         static constexpr auto run = []( const auto &op, const auto & ... bind  )
         {
             return [=]( const auto &arg, const auto & ... args )
