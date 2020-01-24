@@ -66,6 +66,7 @@ if test -z "$EXPORT"; then
         if test -n "$solver" ; then
             extra="$extra --solver $solver";
         fi
+    elif echo "$opts" | grep -q "lamp"; then :
     elif ! echo "$opts" | egrep -q "leakcheck|relaxed"; then
         # --symbolic currently leaks memory
         extra="$extra --leakcheck exit"
