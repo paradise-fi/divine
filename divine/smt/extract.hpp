@@ -30,28 +30,29 @@ template< typename Builder >
 struct Extract : Builder
 {
     using Node = typename Builder::Node;
+    using expr_t = brq::smt_expr< std::vector >;
 
     template< typename... Args >
     Extract( vm::CowHeap &heap, Args && ... args )
         : Builder( std::forward< Args >( args )... ), _heap( heap )
     {}
 
-    RPN read( vm::HeapPointer ptr )
+    expr_t read( vm::HeapPointer ptr )
     {
         auto data = _heap.unsafe_bytes( ptr );
-        return RPN{ data.begin(), data.end() };
+        return expr_t{ data.begin(), data.end() - 1 };
     }
 
-    RPN read_constraints( vm::HeapPointer ptr )
+    expr_t read_constraints( vm::HeapPointer ptr )
     {
         vm::PointerV map( ptr ), clause;
-        RPN rpn;
-        rpn.push_back( 0 ); /* FIXME domain identification byte */
+        expr_t expr;
 
         if ( !_heap.valid( ptr ) )
-            return rpn;
+            return expr;
 
         bool first = true;
+
         for ( int i = 0; i < _heap.size( ptr ); i += vm::PointerBytes )
         {
             _heap.read_shift( map, clause );
@@ -59,16 +60,18 @@ struct Extract : Builder
             {
                 ASSERT_EQ( clause.cooked().type(), vm::PointerType::Marked );
                 auto b = _heap.unsafe_bytes( clause.cooked() );
-                std::copy( b.begin() + 1, b.end(), std::back_inserter( rpn ) );
+                expr_t clause_expr{ b.begin(), b.end() - 1 };
+                TRACE( "clause:", clause_expr, first );
+                expr.apply( clause_expr );
                 if ( first )
                     first = false;
                 else
-                    rpn.push_back( static_cast< uint8_t >( brick::smt::Op::And ) );
+                    expr.apply( brq::smt_op::bool_and );
             }
         }
 
-        TRACE( "constraints:", rpn );
-        return rpn;
+        TRACE( "constraints:", expr );
+        return expr;
     }
 
     Node build( vm::HeapPointer p );
