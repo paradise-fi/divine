@@ -201,6 +201,8 @@ namespace brq
             {
                 if ( smt_traits( op ).is_var() )
                     imm_set( smt_varid_t( init ) );
+                else
+                    imm_set( init );
             }
             else
             {
