@@ -23,26 +23,21 @@
 
 #include <divine/smt/rpn.hpp>
 #include <divine/vm/divm.h>
-#include <brick-smt>
 
 namespace divine::smt::builder
 {
-    using namespace divine::smt;
-
-    template< typename Builder >
-    auto mk_bin( Builder &bld, Op op, int bw, typename Builder::Node a, typename Builder::Node b )
-        -> typename Builder::Node
+    template< typename B >
+    auto mk_bin( B &builder, brq::smt_op op, int bw, typename B::Node a, typename B::Node b )
     {
-        ASSERT( brick::smt::is_binary( op ) );
-        return bld.binary( { op, bw }, a, b );
+        ASSERT_EQ( brq::smt_arity( op ), 2 );
+        return builder.binary( op, a, b, bw );
     }
 
-    template< typename Builder >
-    auto mk_un( Builder &bld, Op op, int bw, typename Builder::Node a )
-        -> typename Builder::Node
+    template< typename B >
+    auto mk_un( B &builder, brq::smt_op op, int bw, typename B::Node a )
     {
-        ASSERT( brick::smt::is_unary( op ) );
-        return bld.unary( { op, bw }, a );
+        ASSERT_EQ( brq::smt_arity( op ), 1 );
+        return builder.unary( op, a, bw );
     }
 
 } // namespace divine::smt::builder
