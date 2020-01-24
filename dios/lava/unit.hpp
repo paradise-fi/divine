@@ -30,7 +30,6 @@ namespace __lava
     struct unit : tagged_array<>, domain_mixin< unit >
     {
         using tagged_array<>::tagged_array;
-        __noinline unit() {}
 
         template< typename type > static unit lift( type ) { return {}; }
         template< typename type > static unit any() { return {}; }
