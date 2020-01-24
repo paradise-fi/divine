@@ -32,6 +32,15 @@ namespace divine::mc::impl
         };
     };
 
+    struct explicit_cmp : mem::NoopCmp< vm::HeapPointer >
+    {
+        void marked( vm::HeapPointer a, vm::HeapPointer b )
+        {
+            brq::raise() << "Cannot compare" << a << " and " << b << " without a solver.\n"
+                         << "Did you mean to use --symbolic?";
+        }
+    };
+
     template< typename Solver >
     struct Hasher : brq::hash_adaptor< vm::CowHeap::Snapshot >
     {
