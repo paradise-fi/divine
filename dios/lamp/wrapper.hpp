@@ -183,6 +183,7 @@ extern "C"
     export ptr __lamp_sitofp ( ptr a, bw  b ) { return wrap( dom::op_sitofp,  a, b ); }
     export ptr __lamp_uitofp ( ptr a, bw  b ) { return wrap( dom::op_uitofp,  a, b ); }
     export ptr __lamp_zext   ( ptr a, bw  b ) { return wrap( dom::op_zext,    a, b ); }
+    export ptr __lamp_zfit   ( ptr a, bw  b ) { return wrap( dom::op_zfit,    a, b ); }
     export ptr __lamp_sext   ( ptr a, bw  b ) { return wrap( dom::op_sext,    a, b ); }
     export ptr __lamp_fpext  ( ptr a, bw  b ) { return wrap( dom::op_fpext,   a, b ); }
     export ptr __lamp_fptosi ( ptr a, bw  b ) { return wrap( dom::op_fptosi,  a, b ); }
