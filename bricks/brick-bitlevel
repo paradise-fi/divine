@@ -66,14 +66,14 @@ namespace brq
      * used like standard C++ casts. */
 
     template< typename F, typename T >
-    void maybe_bitcast( F f, T &t )
+    void maybe_bitcast( const F &f, T &t )
     {
         ASSERT( sizeof( T ) == sizeof( F ) );
         memcpy( &t, &f, sizeof( T ) );
     }
 
     template< typename F, typename T >
-    void bitcast( F f, T &t )
+    void bitcast( const F &f, T &t )
     {
         static_assert( sizeof( F ) == sizeof( T ) );
         maybe_bitcast( f, t );
