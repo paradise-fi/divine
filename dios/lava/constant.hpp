@@ -120,15 +120,20 @@ namespace __lava
         static constexpr auto wtu = []( const auto & ... xs ) { return with_type< false >( xs... ); };
         static constexpr auto wts = []( const auto & ... xs ) { return with_type< true  >( xs... ); };
 
-        static constant op_thaw( constant c, uint8_t bw ) noexcept
+        static uint64_t mask( bitwidth_t bw )
         {
-            constant d = c;
-            d->bw = bw;
-            wtu( [&]( auto f ) noexcept { return d->bw = f; }, d );
-            return d;
+            return bw ? ( ( 1ull << ( bw - 1 ) ) | mask( bw - 1 ) ) : 0;
         }
 
-        static tristate to_tristate( const constant &val ) noexcept
+        static constant set_bw( constant c, bitwidth_t bw )
+        {
+            auto rv = c;
+            rv->bw = bw;
+            rv->value &= mask( bw );
+            return rv;
+        }
+
+        static tristate to_tristate( const constant &val )
         {
             if ( val->value )
                 return { tristate::yes };
@@ -235,6 +240,13 @@ namespace __lava
 
         static cv op_eq( cr a, cr b ) { return wtu( std::equal_to(), a, b ); }
         static cv op_ne( cr a, cr b ) { return wtu( std::not_equal_to(), a, b ); }
+
+        static cv op_trunc( cv c, bw w ) { return set_bw( c, w ); }
+        static cv op_zext( cv c, bw w )  { return set_bw( c, w ); }
+        static cv op_sext( cv c, bw w )
+        {
+            return set_bw( wts( []( auto v ) { return int64_t( v ); }, c ), w );
+        }
 
         // op_fadd
         // op_fsub
