@@ -267,24 +267,13 @@ namespace lart::abstract
         template< typename builder_t, lifter_op_t op = T >
         auto construct( builder_t &irb ) -> ENABLE_IF( store )
         {
-            auto paired = paired_arguments();
-            auto value = paired[ 0 ];
-            auto addr = paired[ 1 ];
+            construct_binary_lifter( irb );
 
-            args.push_back( value.concrete.taint );
-            args.push_back( value.concrete.value );
-            args.push_back( value.abstract.value );
-            args.push_back( addr.concrete.taint );
-            args.push_back( addr.concrete.value );
-            args.push_back( addr.abstract.value );
+            auto type = inargs[ 1 ].value->getType();
+            auto size = module->getDataLayout().getTypeAllocSize( type );
+            args.push_back( i8( size ) );
 
-            auto type = args[ 1 ]->getType();
-            std::string name = "__lart_store_lifter_" + llvm_name( type );
-            auto fn = module->getFunction( name );
-
-            auto call = irb.CreateCall( fn, args );
-            irb.CreateRet( undef( lifter_function()->getReturnType() ) );
-            inline_call( call );
+            return_from_lifter( irb, call_lamp_op( irb ) );
         }
 
         template< typename builder_t, lifter_op_t op = T >
