@@ -40,16 +40,17 @@ namespace divine::smt::builder
 struct STP
 {
     using Node = stp::ASTNode;
+    using op_t = brq::smt_op;
 
     STP( stp::STPMgr &stp ) : _stp( stp ) {}
 
-    Node unary( Unary, Node );
-    Node binary( Binary, Node, Node );
-    Node constant( Constant );
-    Node constant( smt::Bitwidth bw, uint64_t value );
+    Node unary( brq::smt_op op, Node arg, int );
+    Node binary( brq::smt_op op, Node, Node, int );
+    Node extract( Node, std::pair< int, int > );
+    Node constant( uint64_t value, int bw );
     Node constant( int val );
     Node constant( bool );
-    Node variable( Variable );
+    Node variable( int id, int bw );
 
     stp::STPMgr &_stp;
 };
