@@ -44,7 +44,7 @@ namespace __lava
         {}
 
         template< typename concrete_t >
-        static auto lift( concrete_t value ) noexcept
+        static auto lift( concrete_t value )
             -> std::enable_if_t< std::is_trivial_v< concrete_t >, constant >
         {
             static_assert( sizeof( concrete_t ) <= 8 );
@@ -68,7 +68,7 @@ namespace __lava
             return { type, sizeof( concrete_t ) * 8, val };
         }
 
-        static constant lift_any() noexcept
+        static constant lift_any()
         {
             // UNREACHABLE( "Constant domain does not provide lift_any operation" );
         }
@@ -84,7 +84,7 @@ namespace __lava
         {
             bitwidth_t bw = std::max( { vals->bw ... } );
             const auto t_bv = constant_data::bv;
-            auto f = [&]( auto... x ) noexcept -> uint64_t { return f_( x... ); };
+            auto f = [&]( auto... x ) -> uint64_t { return f_( x... ); };
 
             if ( ( ( vals->type == constant_data::bv ) && ... ) )
                 switch ( bw )
@@ -201,27 +201,27 @@ namespace __lava
         using cv = constant;
         using cr = const constant &;
 
-        static cv op_add ( cr a, cr b ) noexcept { return wtu( std::plus(), a, b ); }
-        static cv op_sub ( cr a, cr b ) noexcept { return wtu( std::minus(), a, b ); }
-        static cv op_mul ( cr a, cr b ) noexcept { return wtu( std::multiplies(), a, b ); }
-        static cv op_sdiv( cr a, cr b ) noexcept { return wts( std::divides(), a, b ); }
-        static cv op_udiv( cr a, cr b ) noexcept { return wtu( std::divides(), a, b ); }
-        static cv op_srem( cr a, cr b ) noexcept { return wts( std::modulus(), a, b ); }
-        static cv op_urem( cr a, cr b ) noexcept { return wtu( std::modulus(), a, b ); }
+        static cv op_add ( cr a, cr b ) { return wtu( std::plus(), a, b ); }
+        static cv op_sub ( cr a, cr b ) { return wtu( std::minus(), a, b ); }
+        static cv op_mul ( cr a, cr b ) { return wtu( std::multiplies(), a, b ); }
+        static cv op_sdiv( cr a, cr b ) { return wts( std::divides(), a, b ); }
+        static cv op_udiv( cr a, cr b ) { return wtu( std::divides(), a, b ); }
+        static cv op_srem( cr a, cr b ) { return wts( std::modulus(), a, b ); }
+        static cv op_urem( cr a, cr b ) { return wtu( std::modulus(), a, b ); }
 
-        static cv op_and( cr a, cr b ) noexcept { return wtu( std::bit_and(), a, b ); }
-        static cv op_or ( cr a, cr b ) noexcept { return wtu( std::bit_or(), a, b ); }
-        static cv op_xor( cr a, cr b ) noexcept { return wtu( std::bit_xor(), a, b ); }
+        static cv op_and( cr a, cr b ) { return wtu( std::bit_and(), a, b ); }
+        static cv op_or ( cr a, cr b ) { return wtu( std::bit_or(), a, b ); }
+        static cv op_xor( cr a, cr b ) { return wtu( std::bit_xor(), a, b ); }
 
-        static constexpr auto shl = []( auto a, auto b ) noexcept { return a << b; };
-        static constexpr auto shr = []( auto a, auto b ) noexcept { return a >> b; };
+        static constexpr auto shl = []( auto a, auto b ) { return a << b; };
+        static constexpr auto shr = []( auto a, auto b ) { return a >> b; };
 
-        static cv op_shl ( cr a, cr b ) noexcept { return wtu( shl, a, b ); }
-        static cv op_ashr( cr a, cr b ) noexcept { return wts( shr, a, b ); }
-        static cv op_lshr( cr a, cr b ) noexcept { return wtu( shr, a, b ); }
+        static cv op_shl ( cr a, cr b ) { return wtu( shl, a, b ); }
+        static cv op_ashr( cr a, cr b ) { return wts( shr, a, b ); }
+        static cv op_lshr( cr a, cr b ) { return wtu( shr, a, b ); }
 
-        static cv op_eq( cr a, cr b ) noexcept { return wtu( std::equal_to(), a, b ); }
-        static cv op_ne( cr a, cr b ) noexcept { return wtu( std::not_equal_to(), a, b ); }
+        static cv op_eq( cr a, cr b ) { return wtu( std::equal_to(), a, b ); }
+        static cv op_ne( cr a, cr b ) { return wtu( std::not_equal_to(), a, b ); }
 
         // op_fadd
         // op_fsub
