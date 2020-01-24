@@ -46,7 +46,7 @@ struct AbstractStubs
     {
         auto &ctx = m.getContext();
         llvm::Function *aValCtor[4];
-        std::string aValStem = "__" + _domain + "_val_i";
+        std::string aValStem = "__lamp_any_i";
 
         int i = 4;
         while ( i --> 0 )
