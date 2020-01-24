@@ -186,6 +186,12 @@ namespace brq
     constexpr int         smt_imm( smt_op op )   { return smt_traits( op ).imm_bytes; }
     constexpr int         smt_arity( smt_op op ) { return smt_traits( op ).arity; }
 
+    template< typename stream >
+    auto operator<<( stream &o, smt_op op ) -> decltype( o << "" )
+    {
+        return o << smt_name( op );
+    }
+
     template< typename imm_t, int storage = storage_size< imm_t >() >
     struct smt_atom_t
     {
