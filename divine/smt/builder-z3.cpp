@@ -24,184 +24,155 @@ namespace divine::smt::builder
 {
 
 using namespace std::literals;
-namespace smt = brick::smt;
-
-z3::expr Z3::constant( Constant con )
-{
-    // Sadly, Z3 changed API: bv_val used to take __int64 or __uint64 which was
-    // a define for (unsigned) long long, now it takes (u)int_64_t, which is
-    // (unsinged) long on Linux. Using the wrong type causes ambiguous overload
-    // in the other version, so we need this hack.
-#ifdef __int64
-    using ValT = __int64;
-#else
-    using ValT = int64_t;
-#endif
-    switch ( con.type() )
-    {
-        case smt::Type::Int:
-            return _ctx.bv_val( static_cast< ValT >( con.value ), con.bitwidth() );
-        case smt::Type::Float:
-            UNREACHABLE( "Floating point arithmetic is not yet supported with Z3." );
-        case smt::Type::Bool:
-            return constant( static_cast< bool >( con.value ) );
-    }
-
-    UNREACHABLE( "unknown type" );
-}
 
 z3::expr Z3::constant( bool v )
 {
     return _ctx.bool_val( v );
 }
 
-z3::expr Z3::constant( smt::Bitwidth bw, uint64_t value )
+z3::expr Z3::constant( uint64_t value, int bw )
 {
     return _ctx.bv_val( bw, value );
 }
 
-z3::expr Z3::variable( Variable var )
+z3::expr Z3::variable( int id, int bw )
 {
-    switch ( var.type() )
-    {
-        case smt::Type::Int:
-            return _ctx.bv_const( ( "var_"s + std::to_string( var.id ) ).c_str(), var.bitwidth() );
-        case smt::Type::Float:
-            UNREACHABLE( "Floating point arithmetic is not yet supported with Z3." );
-        case smt::Type::Bool:
-            UNREACHABLE( "Unsupported boolean variable." );
-    }
-
-    UNREACHABLE( "unknown type" );
+    return _ctx.bv_const( ( "var_"s + std::to_string( id ) ).c_str(), bw );
 }
 
-z3::expr Z3::unary( Unary un, Node arg )
+z3::expr Z3::unary( brq::smt_op op, Node arg, int bw )
 {
-    int bw = un.bw;
     int childbw = arg.is_bv() ? arg.get_sort().bv_size() : 1;
 
-    switch ( un.op )
+    if ( op == op_t::bv_zfit )
+        op = bw > childbw ? op_t::bv_zext : op_t::bv_trunc;
+
+    switch ( op )
     {
-        case Op::Trunc:
+        case op_t::bv_trunc:
             ASSERT_LEQ( bw, childbw );
             ASSERT( arg.is_bv() );
             if ( bw == childbw )
                 return arg;
             return arg.extract( bw - 1, 0 );
-        case Op::ZExt:
+        case op_t::bv_zext:
             ASSERT_LEQ( childbw, bw );
             if ( bw == childbw )
                 return arg;
             return arg.is_bv()
                 ? z3::zext( arg, bw - childbw )
                 : z3::ite( arg, _ctx.bv_val( 1, bw ), _ctx.bv_val( 0, bw ) );
-        case Op::SExt:
+        case op_t::bv_sext:
             ASSERT_LEQ( childbw, bw );
             if ( bw == childbw )
                 return arg;
             return arg.is_bv()
                 ? z3::sext( arg, bw - childbw )
                 : z3::ite( arg, ~_ctx.bv_val( 0, bw ), _ctx.bv_val( 0, bw ) );
-        /*case Op::FPExt:
+
+        /*case op_t::fp_ext:
             ASSERT_LT( childbw, bw );
             // Z3_mk_fpa_to_fp_float( arg.ctx() ); // TODO
             UNREACHABLE_F( "Unsupported operation." );
-        case Op::FPTrunc:
+        case op_t::fp_trunc:
             ASSERT_LT( bw, childbw );
             UNREACHABLE_F( "Unsupported operation." ); // TODO
-        case Op::FPToSInt:
+        case op_t::fp_tosbv:
             UNREACHABLE_F( "Unsupported operation." ); // TODO
             ASSERT_EQ( childbw, bw );
-        case Op::FPToUInt:
+        case op_t::fp_toubv:
             ASSERT_EQ( childbw, bw );
             UNREACHABLE_F( "Unsupported operation." ); // TODO
-        case Op::SIntToFP:
+        case op_t::bv_stofp:
             ASSERT_EQ( childbw, bw );
             UNREACHABLE_F( "Unsupported operation." ); // TODO
-        case Op::UIntToFP:
+        case op_t::bv_utofp:
             ASSERT_EQ( childbw, bw );
             UNREACHABLE_F( "Unsupported operation." ); // TODO*/
-        case Op::Not:
+        case op_t::bv_not:
+        case op_t::bool_not:
             ASSERT_EQ( childbw, bw );
             ASSERT_EQ( bw, 1 );
             return arg.is_bv() ? ~arg : !arg;
-        case Op::Extract:
-            ASSERT_LT( bw, childbw );
-            ASSERT( arg.is_bv() );
-            return arg.extract( un.from, un.to );
         default:
-            UNREACHABLE( "unknown unary operation", un.op );
+            UNREACHABLE( "unknown unary operation", op );
     }
 }
 
-z3::expr Z3::binary( Binary bin, Node a, Node b )
+z3::expr Z3::extract( Node arg, std::pair< int, int > bounds )
+{
+    ASSERT( arg.is_bv() );
+    return arg.extract( bounds.first, bounds.second );
+}
+
+z3::expr Z3::binary( brq::smt_op op, Node a, Node b, int )
 {
     if ( a.is_bv() && b.is_bv() )
     {
-        switch ( bin.op )
+        switch ( op )
         {
-            case Op::BvAdd:  return a + b;
-            case Op::BvSub:  return a - b;
-            case Op::BvMul:  return a * b;
-            case Op::BvSDiv: return a / b;
-            case Op::BvUDiv: return z3::udiv( a, b );
-            case Op::BvSRem: return z3::srem( a, b );
-            case Op::BvURem: return z3::urem( a, b );
-            case Op::BvShl:  return z3::shl( a, b );
-            case Op::BvAShr: return z3::ashr( a, b );
-            case Op::BvLShr: return z3::lshr( a, b );
-            case Op::And:
-            case Op::BvAnd:  return a & b;
-            case Op::BvOr:   return a | b;
-            case Op::BvXor:  return a ^ b;
+            case op_t::bv_add:  return a + b;
+            case op_t::bv_sub:  return a - b;
+            case op_t::bv_mul:  return a * b;
+            case op_t::bv_sdiv: return a / b;
+            case op_t::bv_udiv: return z3::udiv( a, b );
+            case op_t::bv_srem: return z3::srem( a, b );
+            case op_t::bv_urem: return z3::urem( a, b );
+            case op_t::bv_shl:  return z3::shl( a, b );
+            case op_t::bv_ashr: return z3::ashr( a, b );
+            case op_t::bv_lshr: return z3::lshr( a, b );
+            case op_t::bool_and:
+            case op_t::bv_and:  return a & b;
+            case op_t::bv_or:   return a | b;
+            case op_t::bv_xor:  return a ^ b;
 
-            case Op::BvULE:  return z3::ule( a, b );
-            case Op::BvULT:  return z3::ult( a, b );
-            case Op::BvUGE:  return z3::uge( a, b );
-            case Op::BvUGT:  return z3::ugt( a, b );
-            case Op::BvSLE:  return a <= b;
-            case Op::BvSLT:  return a < b;
-            case Op::BvSGE:  return a >= b;
-            case Op::BvSGT:  return a > b;
-            case Op::Eq:   return a == b;
-            case Op::NE:   return a != b;
-            case Op::Concat: return z3::concat( a, b );
+            case op_t::bv_ule:  return z3::ule( a, b );
+            case op_t::bv_ult:  return z3::ult( a, b );
+            case op_t::bv_uge:  return z3::uge( a, b );
+            case op_t::bv_ugt:  return z3::ugt( a, b );
+            case op_t::bv_sle:  return a <= b;
+            case op_t::bv_slt:  return a < b;
+            case op_t::bv_sge:  return a >= b;
+            case op_t::bv_sgt:  return a > b;
+            case op_t::eq:   return a == b;
+            case op_t::neq:   return a != b;
+            case op_t::bv_concat: return z3::concat( a, b );
             default:
-                UNREACHABLE( "unknown binary operation", bin.op );
+                UNREACHABLE( "unknown binary operation", op );
         }
     }
     /*else if ( a.is_real() && b.is_real() )
     {
         switch ( bin.op )
         {
-            case Op::FpAdd: return a + b;
-            case Op::FpSub: return a - b;
-            case Op::FpMul: return a * b;
-            case Op::FpDiv: return a / b;
-            case Op::FpRem:
+            case op_t::bv_fpadd: return a + b;
+            case op_t::bv_fpsub: return a - b;
+            case op_t::bv_fpmul: return a * b;
+            case op_t::bv_fpdiv: return a / b;
+            case op_t::bv_fprem:
                 UNREACHABLE_F( "unsupported operation FpFrem" );
-            case Op::FpFalse:
+            case op_t::bv_fpfalse:
                 UNREACHABLE_F( "unsupported operation FpFalse" );
-            case Op::FpOEQ: return a == b;
-            case Op::FpOGT: return a > b;
-            case Op::FpOGE: return a >= b;
-            case Op::FpOLT: return a < b;
-            case Op::FpOLE: return a <= b;
-            case Op::FpONE: return a != b;
-            case Op::FpORD:
+            case op_t::bv_fpoeq: return a == b;
+            case op_t::bv_fpogt: return a > b;
+            case op_t::bv_fpoge: return a >= b;
+            case op_t::bv_fpolt: return a < b;
+            case op_t::bv_fpole: return a <= b;
+            case op_t::bv_fpone: return a != b;
+            case op_t::bv_fpord:
                 UNREACHABLE_F( "unsupported operation FpORD" );
-            case Op::FpUEQ: return a == b;
-            case Op::FpUGT: return a > b;
-            case Op::FpUGE: return a >= b;
-            case Op::FpULT: return a < b;
-            case Op::FpULE: return a <= b;
-            case Op::FpUNE: return a != b;
-            case Op::FpUNO:
+            case op_t::bv_fpueq: return a == b;
+            case op_t::bv_fpugt: return a > b;
+            case op_t::bv_fpuge: return a >= b;
+            case op_t::bv_fpult: return a < b;
+            case op_t::bv_fpule: return a <= b;
+            case op_t::bv_fpune: return a != b;
+            case op_t::bv_fpuno:
                 UNREACHABLE_F( "unknown binary operation FpUNO" );
-            case Op::FpTrue:
+            case op_t::bv_fptrue:
                 UNREACHABLE_F( "unknown binary operation FpTrue" );
             default:
-                UNREACHABLE_F( "unknown binary operation %d %d", bin.op, int( Op::EQ ) );
+                unreachable_f( "unknown binary operation %d %d", bin.op, int( op_t::bv_eq ) );
         }
     }*/
     else
@@ -218,48 +189,49 @@ z3::expr Z3::binary( Binary bin, Node a, Node b )
             b = ( b == _ctx.bv_val( 1, 1 ) );
         }
 
-        switch ( bin.op )
+        switch ( op )
         {
-            case Op::Xor:
-            case Op::BvXor:
-            case Op::BvSub:
+            case op_t::bool_xor:
+            case op_t::bv_xor:
+            case op_t::bv_sub:
                 return a != b;
-            case Op::BvAdd:
+            case op_t::bv_add:
                 return a && b;
-            case Op::BvUDiv:
-            case Op::BvSDiv:
+            case op_t::bv_udiv:
+            case op_t::bv_sdiv:
                 return a;
-            case Op::BvURem:
-            case Op::BvSRem:
-            case Op::BvShl:
-            case Op::BvLShr:
+            case op_t::bv_urem:
+            case op_t::bv_srem:
+            case op_t::bv_shl:
+            case op_t::bv_lshr:
                 return constant( false );
-            case Op::BvAShr:
+            case op_t::bv_ashr:
                 return a;
-            case Op::Or:
-            case Op::BvOr:
+            case op_t::bool_or:
+            case op_t::bv_or:
                 return a || b;
-            case Op::And:
-            case Op::BvAnd:
+            case op_t::bool_and:
+            case op_t::constraint:
+            case op_t::bv_and:
                 return a && b;
-            case Op::BvUGE:
-            case Op::BvSLE:
+            case op_t::bv_uge:
+            case op_t::bv_sle:
                 return a || !b;
-            case Op::BvULE:
-            case Op::BvSGE:
+            case op_t::bv_ule:
+            case op_t::bv_sge:
                 return b || !a;
-            case Op::BvUGT:
-            case Op::BvSLT:
+            case op_t::bv_ugt:
+            case op_t::bv_slt:
                 return a && !b;
-            case Op::BvULT:
-            case Op::BvSGT:
+            case op_t::bv_ult:
+            case op_t::bv_sgt:
                 return b && !a;
-            case Op::Eq:
+            case op_t::eq:
                 return a == b;
-            case Op::NE:
+            case op_t::neq:
                 return a != b;
             default:
-                UNREACHABLE( "unknown boolean binary operation", bin.op );
+                UNREACHABLE( "unknown boolean binary operation", op );
         }
     }
 }

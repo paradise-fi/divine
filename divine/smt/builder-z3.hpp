@@ -29,14 +29,16 @@ namespace divine::smt::builder
 struct Z3
 {
     using Node = z3::expr;
+    using op_t = brq::smt_op;
+
     Z3( z3::context &c ) : _ctx( c ) {}
 
-    Node unary( Unary, Node );
-    Node binary( Binary, Node, Node );
-    Node constant( smt::Bitwidth bw, uint64_t value );
-    Node constant( Constant );
+    Node unary( brq::smt_op, Node, int );
+    Node extract( Node n, std::pair< int, int > );
+    Node binary( brq::smt_op, Node, Node, int );
+    Node constant( uint64_t value, int bw );
     Node constant( bool );
-    Node variable( Variable );
+    Node variable( int id, int bw );
 
     z3::context &_ctx;
 };
