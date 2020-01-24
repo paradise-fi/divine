@@ -76,8 +76,8 @@ namespace brq
         {
             case op::invalid:   return { "invalid",  0, 0,  0 };
 
-            case op::eq:        return { "=",  2, 0, 1 };
-            case op::neq:       return { "!=", 2, 0, 1 };
+            case op::eq:        return { "=",  2, 0, 1, smt_op_compare };
+            case op::neq:       return { "!=", 2, 0, 1, smt_op_compare };
 
             case op::var_bool:  return { "var_bool", 0, 2,  1, smt_op_var };
             case op::var_i8:    return { "var_i8",   0, 2,  8, smt_op_var };
