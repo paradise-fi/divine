@@ -248,7 +248,7 @@ struct Eval
         return op;
     }
 
-    IntV gep( int type, int idx, int end ); // getelementptr
+    value::Int< 64, true > gep( int type, int idx, int end ); // getelementptr
 
     void implement_store()
     {

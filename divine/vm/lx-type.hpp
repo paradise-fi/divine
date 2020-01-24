@@ -35,7 +35,7 @@ struct Types
         return *_heap.template unsafe_deref< _VM_TypeTable >( ptr, _heap.ptr2i( ptr ) );
     }
 
-    std::pair< int64_t, int > subtype( int id, int sub )
+    std::pair< int64_t, int > subtype( int id, int64_t sub )
     {
         switch ( type( id ).type.type )
         {

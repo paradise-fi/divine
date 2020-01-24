@@ -103,20 +103,17 @@ FaultStream< Ctx > Eval< Ctx >::fault( Fault f, HeapPointer frame, CodePointer c
 }
 
 template< typename Ctx >
-auto Eval< Ctx >::gep( int type, int idx, int end ) -> IntV // getelementptr
+auto Eval< Ctx >::gep( int type, int idx, int end ) -> value::Int< 64, true > // getelementptr
 {
     if ( idx == end )
-        return IntV( 0 );
+        return value::Int< 64, true >( 0 );
 
-    int64_t min = std::numeric_limits< int >::min(),
-            max = std::numeric_limits< int >::max();
+    int64_t min = std::numeric_limits< int64_t >::min(),
+            max = std::numeric_limits< int64_t >::max();
 
     value::Int< 64, true > offset;
     auto fetch = [&]( auto v ) { offset = v.get( idx + 1 ).make_signed(); };
     type_dispatch< IsIntegral >( operand( idx ).type, fetch, operand( idx ) );
-
-    if ( offset.cooked() < min || offset.cooked() > max )
-        return IntV( 0, 0, false );
 
     auto subtype = types().subtype( type, offset.cooked() );
     auto offset_sub = gep( subtype.second, idx + 1, end );
@@ -124,12 +121,12 @@ auto Eval< Ctx >::gep( int type, int idx, int end ) -> IntV // getelementptr
 
     if ( a > 0 && b > 0 && ( b > max - a || a + b > max ) ||
          a < 0 && b < 0 && ( b < min - a || a + b < min ) )
-        return IntV( 0, 0, false ); /* undefined */
+        return { 0, 0, false }; /* undefined */
 
-    IntV offset_bytes( subtype.first );
+    value::Int< 64, true > offset_bytes( subtype.first );
     offset_bytes.defined( offset.defined() );
 
-    return IntV( offset_bytes ) + offset_sub;
+    return offset_bytes + offset_sub;
 }
 
 template< typename Ctx > template< typename F >

@@ -233,9 +233,10 @@ struct Int : Base
         if ( ptr ) _meta.pointer = _isptr;
     }
 
-    Int< _width, true, is_dynamic > make_signed()
+    template< bool want_sign >
+    Int< _width, want_sign, is_dynamic > convert()
     {
-        Int< _width, true, is_dynamic > result( _raw, _m, false );
+        Int< _width, want_sign, is_dynamic > result( _raw, _m, false );
 
         if constexpr ( is_dynamic )
             result._meta.width = width();
@@ -244,6 +245,9 @@ struct Int : Base
         result.taints( _meta.taints );
         return result;
     }
+
+    auto make_signed()   { return convert< true >(); }
+    auto make_unsigned() { return convert< false >(); }
 
     template< int w, bool dyn > Raw signbit( Int< w, is_signed, dyn > i )
     {
@@ -507,14 +511,7 @@ struct Pointer : Base
         return r;
     }
 
-    template< int w > Pointer operator+( Int< w, true > off )
-    {
-        Pointer r = *this + off.cooked();
-        if ( !off.defined() )
-            r._off_defined = false;
-        r.taints( taints() | off.taints() );
-        return r;
-    }
+    template< int w > Pointer operator+( Int< w, true > off );
 
     Raw defbits() { return defined() ? full< Raw > : 0; } /* FIXME */
     void defbits( Raw r ) { _obj_defined = _off_defined = ( r == full< Raw > ); }
@@ -602,6 +599,12 @@ OP( compare, > );
 OP( compare, >= );
 
 #undef OP
+
+template< int w > Pointer Pointer::operator+( Int< w, true > off )
+{
+    using IntPtr = Int< _VM_PB_Full, false >;
+    return Pointer( IntPtr( *this ) + off.make_unsigned() );
+}
 
 }
 
