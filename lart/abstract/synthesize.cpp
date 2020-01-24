@@ -15,16 +15,8 @@ namespace
         return llvm::BasicBlock::Create( ctx, name, fn );
     }
 
-    template< typename Arg, typename IRB >
-    llvm::Instruction * domain_index( const Arg& arg, IRB &irb )
+    auto inline_call = [] ( auto call )
     {
-        auto fn = irb.GetInsertBlock()->getModule()->getFunction( "__lart_read_domain_id" );
-        if ( !fn )
-            brq::raise() << "function __lart_read_domain_id is required but missing";
-        return irb.CreateCall( fn, { arg } );
-    }
-
-    auto inline_call = [] ( auto call ) {
         llvm::InlineFunctionInfo ifi;
         llvm::InlineFunction( call, ifi );
     };
@@ -153,13 +145,11 @@ namespace lart::abstract
             auto abs = irb.CreateAnd( lhs.concrete.taint, rhs.concrete.taint );
             irb.CreateCondBr( abs, dbb, cbb );
 
-            std::map< llvm::BasicBlock *, llvm::Value * > dom;
             std::map< llvm::BasicBlock *, llvm::Value * > val1;
             std::map< llvm::BasicBlock *, llvm::Value * > val2;
 
             /* domain block */
             irb.SetInsertPoint( dbb );
-            dom[ dbb ] = domain_index( lhs.abstract.value, irb );
             val1[ dbb ] = lhs.abstract.value;
             val2[ dbb ] = rhs.abstract.value;
             irb.CreateBr( exit );
@@ -170,25 +160,23 @@ namespace lart::abstract
 
             /* lift 1. argument */
             irb.SetInsertPoint( l1bb );
-            dom[ l1bb ] = domain_index( rhs.abstract.value, irb );
 
             if constexpr ( Taint::insertvalue( T ) )
             {
                 auto ptr_concrete = irb.CreateAlloca( lhs.concrete.value->getType() );
                 irb.CreateStore( lhs.concrete.value, ptr_concrete );
-                val1[ l1bb ] = lift_aggr( ptr_concrete, dom[ l1bb ], irb );
+                val1[ l1bb ] = lift_aggr( ptr_concrete, irb );
             }
             else
-                val1[ l1bb ] = lift( lhs.concrete.value, dom[ l1bb ], irb );
+                val1[ l1bb ] = lift( lhs.concrete.value, irb );
 
             val2[ l1bb ] = rhs.abstract.value;
             irb.CreateBr( exit );
 
             /* lift 2. argument */
             irb.SetInsertPoint( l2bb );
-            dom[ l2bb ] = domain_index( lhs.abstract.value, irb );
             val1[ l2bb ] = lhs.abstract.value;
-            val2[ l2bb ] = lift( rhs.concrete.value, dom[ l2bb ], irb );
+            val2[ l2bb ] = lift( rhs.concrete.value, irb );
             irb.CreateBr( exit );
 
             /* pick correct arguments */
@@ -202,12 +190,6 @@ namespace lart::abstract
                     phi->addIncoming( d, bb );
                 return phi;
             };
-
-            domain = irb.CreatePHI( i8Ty(), 3 );
-
-            auto phi = llvm::cast< llvm::PHINode >( domain );
-            for ( const auto &[bb, d] : dom )
-                phi->addIncoming( d, bb );
 
             args.push_back( merge( val1 ) );
             args.push_back( merge( val2 ) );
@@ -244,8 +226,6 @@ namespace lart::abstract
             args.push_back( agg.abstract.value );
             args.push_back( idx.value );
 
-            domain = domain_index( agg.abstract.value, irb );
-
             auto call = call_lifter( irb );
             return_from_lifter( irb, call );
         }
@@ -275,9 +255,7 @@ namespace lart::abstract
         {
             auto arg = TaintArgument{ lifter_function()->arg_begin() };
             auto val = arg.abstract.value;
-            auto lower = lifter_function()->getParent()->getFunction( "__lower_tristate" );
-
-            domain = domain_index( val, irb );
+            auto lower = lifter_function()->getParent()->getFunction( "__lamp_decide" );
 
             auto ptr = get_function_from_domain();
             auto trty = lower->getFunctionType()->getParamType( 0 );
@@ -296,8 +274,6 @@ namespace lart::abstract
             args.push_back( constrained.abstract.value ); // constrained abstract value
             args.push_back( inargs[ 3 ].value ); // constraint condition
             args.push_back( inargs[ 4 ].value ); // assumed constraint value
-
-            domain = domain_index( constrained.abstract.value, irb );
 
             auto call = call_lifter( irb );
             return_from_lifter( irb, call );
@@ -360,8 +336,6 @@ namespace lart::abstract
             auto bw = inargs[ 0 ].value->getType()->getPrimitiveSizeInBits();
             args.push_back( i8( bw ) ); // bitwidth of thawed value
 
-            domain = domain_index( thawed, irb );
-
             auto call = call_lifter( irb );
             return_from_lifter( irb, call );
         }
@@ -376,8 +350,6 @@ namespace lart::abstract
             auto bw = cast->getDestTy()->getPrimitiveSizeInBits();
             args.push_back( i8( bw ) );
 
-            domain = domain_index( paired.abstract.value, irb );
-
             auto call = call_lifter( irb );
             return_from_lifter( irb, call );
         }
@@ -386,7 +358,6 @@ namespace lart::abstract
         auto construct( builder_t &irb ) -> ENABLE_IF( call )
         {
             auto paired = paired_arguments();
-            domain = domain_index( paired.front().abstract.value, irb );
 
             std::map< llvm::BasicBlock *, llvm::Value * > lifted;
 
@@ -490,7 +461,6 @@ namespace lart::abstract
         std::vector< Argument > inargs;
         std::vector< llvm::Value * > args;
         llvm::BasicBlock * entry;
-        llvm::Value * domain = nullptr;
 
         auto arguments() const
         {
@@ -542,26 +512,26 @@ namespace lart::abstract
             return type_name( val->getType() );
         }
 
-        template< typename V, typename I, typename IRB >
-        llvm::CallInst * lift_aggr( V val, I dom, IRB &irb ) const
+        template< typename V, typename IRB >
+        llvm::CallInst * lift_aggr( V val, IRB &irb ) const
         {
             auto fty = llvm::FunctionType::get( i8PTy(), { i8PTy(), i64Ty() }, false );
-            auto fn = lift( dom, irb, fty, "aggr" );
+            auto fn = lift( irb, fty, "aggr" );
             auto size = module->getDataLayout().getTypeAllocSize( val->getType() );
             auto i8ptr = irb.CreateBitCast( val, i8PTy() );
             return irb.CreateCall( fn, { i8ptr, i64( size ) } );
         }
 
-        template< typename V, typename I, typename IRB >
-        llvm::CallInst * lift( V val, I dom, IRB &irb ) const
+        template< typename V, typename IRB >
+        llvm::CallInst * lift( V val, IRB &irb ) const
         {
             auto fty = llvm::FunctionType::get( i8PTy(), { val->getType() }, false );
-            auto fn = lift( dom, irb, fty, type_name( val ) );
+            auto fn = lift( irb, fty, type_name( val ) );
             return irb.CreateCall( fn, { val } );
         }
 
-        template< typename I, typename IRB >
-        llvm::Value * lift( I dom, IRB &irb, llvm::FunctionType *fty, const std::string & tname ) const
+        template< typename IRB >
+        llvm::Value * lift( IRB &irb, llvm::FunctionType *fty, const std::string & tname ) const
         {
             auto name = "__lart_abstract_lift_one_" + tname;
             auto impl = module->getFunction( name );
