@@ -20,6 +20,7 @@ namespace __lamp
         using __lava::tagged_array<>::tagged_array;
         using doms = typename sl::doms;
         using self = semilattice;
+        using sref = const self &;
 
         template< typename dom_t >
         semilattice( const dom_t &v ) : tagged_array<>( v )
@@ -162,32 +163,32 @@ namespace __lamp
         template< typename val_t >
         static self any() { return sl::any_dom::template any< val_t >(); }
 
-        static self assume( self a, self b, bool c ) { return op( wrap( _assume, c ), a, b ); }
-        static tristate to_tristate( self a ) { return op( run( _tristate ), a ); }
+        static self assume( sref a, sref b, bool c ) { return op( wrap( _assume, c ), a, b ); }
+        static tristate to_tristate( sref a ) { return op( run( _tristate ), a ); }
 
-        static self op_add( self a, self b ) { return op( wrap( add ), a, b ); }
-        static self op_sub( self a, self b ) { return op( wrap( sub ), a, b ); }
-        static self op_mul( self a, self b ) { return op( wrap( mul ), a, b ); }
+        static self op_add( sref a, sref b ) { return op( wrap( add ), a, b ); }
+        static self op_sub( sref a, sref b ) { return op( wrap( sub ), a, b ); }
+        static self op_mul( sref a, sref b ) { return op( wrap( mul ), a, b ); }
 
-        static self op_sdiv( self a, self b ) { return op( wrap( sdiv ), a, b ); }
-        static self op_udiv( self a, self b ) { return op( wrap( udiv ), a, b ); }
-        static self op_srem( self a, self b ) { return op( wrap( srem ), a, b ); }
-        static self op_urem( self a, self b ) { return op( wrap( urem ), a, b ); }
+        static self op_sdiv( sref a, sref b ) { return op( wrap( sdiv ), a, b ); }
+        static self op_udiv( sref a, sref b ) { return op( wrap( udiv ), a, b ); }
+        static self op_srem( sref a, sref b ) { return op( wrap( srem ), a, b ); }
+        static self op_urem( sref a, sref b ) { return op( wrap( urem ), a, b ); }
 
-        static self op_zext ( self a, bw b ) { return op( wrap( zext,  b ), a ); }
-        static self op_sext ( self a, bw b ) { return op( wrap( sext,  b ), a ); }
-        static self op_trunc( self a, bw b ) { return op( wrap( trunc, b ), a ); }
+        static self op_zext ( sref a, bw b ) { return op( wrap( zext,  b ), a ); }
+        static self op_sext ( sref a, bw b ) { return op( wrap( sext,  b ), a ); }
+        static self op_trunc( sref a, bw b ) { return op( wrap( trunc, b ), a ); }
 
-        static self op_eq ( self a, self b ) { return op( wrap( eq  ), a, b ); }
-        static self op_ne ( self a, self b ) { return op( wrap( ne  ), a, b ); }
-        static self op_slt( self a, self b ) { return op( wrap( slt ), a, b ); }
-        static self op_sgt( self a, self b ) { return op( wrap( sgt ), a, b ); }
-        static self op_ult( self a, self b ) { return op( wrap( ult ), a, b ); }
-        static self op_ugt( self a, self b ) { return op( wrap( ugt ), a, b ); }
+        static self op_eq ( sref a, sref b ) { return op( wrap( eq  ), a, b ); }
+        static self op_ne ( sref a, sref b ) { return op( wrap( ne  ), a, b ); }
+        static self op_slt( sref a, sref b ) { return op( wrap( slt ), a, b ); }
+        static self op_sgt( sref a, sref b ) { return op( wrap( sgt ), a, b ); }
+        static self op_ult( sref a, sref b ) { return op( wrap( ult ), a, b ); }
+        static self op_ugt( sref a, sref b ) { return op( wrap( ugt ), a, b ); }
 
-        static self op_shl ( self a, self b ) { return op( wrap( shl  ), a, b ); }
-        static self op_lshr( self a, self b ) { return op( wrap( lshr ), a, b ); }
-        static self op_ashr( self a, self b ) { return op( wrap( ashr ), a, b ); }
+        static self op_shl ( sref a, sref b ) { return op( wrap( shl  ), a, b ); }
+        static self op_lshr( sref a, sref b ) { return op( wrap( lshr ), a, b ); }
+        static self op_ashr( sref a, sref b ) { return op( wrap( ashr ), a, b ); }
     };
 
 }
