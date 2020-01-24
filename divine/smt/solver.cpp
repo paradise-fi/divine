@@ -1,7 +1,6 @@
 #include <divine/smt/solver.hpp>
 #include <divine/smt/builder.hpp>
 #include <divine/vm/memory.hpp>
-#include <brick-smt>
 #include <brick-proc>
 #include <brick-bitlevel>
 
@@ -10,8 +9,8 @@ using namespace divine::smt::builder;
 namespace divine::smt::solver
 {
 
-namespace smt = brick::smt;
 namespace proc = brick::proc;
+using op_t = brq::smt_op;
 
 Result SMTLib::solve()
 {
@@ -19,7 +18,7 @@ Result SMTLib::solve()
     auto q = b.constant( true );
 
     for ( auto clause : _asserts )
-        q = builder::mk_bin( b, Op::And, 1, q, clause );
+        q = builder::mk_bin( b, brq::smt_op::bv_and, 1, q, clause );
 
     auto r = brick::proc::spawnAndWait( proc::StdinString( _ctx.query( q ) ) | proc::CaptureStdout |
                                         proc::CaptureStderr, _opts );
@@ -39,12 +38,12 @@ Result SMTLib::solve()
 }
 
 template< typename Core, typename Node >
-Op equality( const Node& node ) noexcept
+op_t equality( const Node& node ) noexcept
 {
     if constexpr ( std::is_same_v< Core, STP > )
-        return Op::Eq;
+        return op_t::eq;
     else
-        return node.is_bv() || node.is_bool() ? Op::Eq : Op::FpOEQ;
+        return node.is_bv() || node.is_bool() ? op_t::eq : op_t::fp_oeq;
 }
 
 template< typename Core >
@@ -58,8 +57,8 @@ bool Simple< Core >::equal( vm::HeapPointer path, SymPairs &sym_pairs,
     auto v_eq = b.constant( true );
     auto c_1_rpn = e_1.read_constraints( path ),
          c_2_rpn = e_2.read_constraints( path );
-    auto c_1 = c_1_rpn.size() == 1 ? b.constant( true ) : evaluate( e_1, c_1_rpn ),
-         c_2 = c_2_rpn.size() == 1 ? b.constant( true ) : evaluate( e_2, c_2_rpn );
+    auto c_1 = c_1_rpn.empty() ? b.constant( true ) : evaluate( e_1, c_1_rpn ),
+         c_2 = c_2_rpn.empty() ? b.constant( true ) : evaluate( e_2, c_2_rpn );
 
     for ( auto [lhs, rhs] : sym_pairs )
     {
@@ -69,18 +68,18 @@ bool Simple< Core >::equal( vm::HeapPointer path, SymPairs &sym_pairs,
         auto v_1 = evaluate( e_1, f_1 );
         auto v_2 = evaluate( e_2, f_2 );
 
-        Op op = equality< Core >( v_1 );
+        brq::smt_op op = equality< Core >( v_1 );
         auto pair_eq = mk_bin( b, op, 1, v_1, v_2 );
-        v_eq = mk_bin( b, Op::And, 1, v_eq, pair_eq );
+        v_eq = mk_bin( b, op_t::bool_and, 1, v_eq, pair_eq );
     }
 
     /* we already know that both constraint sets are sat */
-    auto c_eq = mk_bin( b, Op::Eq, 1, c_1, c_2 ),
-      pc_fail = mk_un(  b, Op::Not, 1, c_1 ),
-       v_eq_c = mk_bin( b, Op::Or, 1, pc_fail, v_eq ),
-           eq = mk_bin( b, Op::And, 1, c_eq, v_eq_c );
+    auto c_eq = mk_bin( b, op_t::eq, 1, c_1, c_2 ),
+      pc_fail = mk_un(  b, op_t::bool_not, 1, c_1 ),
+       v_eq_c = mk_bin( b, op_t::bool_or, 1, pc_fail, v_eq ),
+           eq = mk_bin( b, op_t::bool_and, 1, c_eq, v_eq_c );
 
-    this->add( mk_un( b, Op::Not, 1, eq ) );
+    this->add( mk_un( b, op_t::bool_not, 1, eq ) );
     auto r = this->solve();
     this->reset();
     return r == Result::False;
@@ -93,7 +92,7 @@ bool Simple< Core >::feasible( vm::CowHeap & heap, vm::HeapPointer ptr )
     auto e = this->extract( heap, 1 );
     auto b = this->builder();
     auto query = evaluate( e, e.read( ptr ) );
-    this->add( mk_bin( b, Op::Eq, 1, query, b.constant( 1, 1 ) ) );
+    this->add( mk_bin( b, op_t::eq, 1, query, b.constant( 1, 1 ) ) );
     return this->solve() != Result::False;
 }
 
