@@ -95,7 +95,7 @@ namespace brq
             case op::const_f32:  return { "const_f32",  0, 4, 32, smt_op_const };
             case op::const_f64:  return { "const_f64",  0, 8, 64, smt_op_const };
 
-            case op::bv_not:     return { "bvnot", 1 };
+            case op::bv_not:     return { "bvnot", 1, 0, 1 };
             case op::bv_neg:     return { "bvneg", 1 };
 
             case op::bv_sext:    return { "sext",     1, 1, 0, smt_op_resize };
