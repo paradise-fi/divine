@@ -147,10 +147,11 @@ namespace lart::abstract
             .map( query::llvmdyncast< llvm::MemCpyInst > )
             .filter( query::notnull )
             .freeze();
-
+#if 0 /* FIXME this breaks test/sym/array-a.pkg.cpp with -O0 by making memmove abstract */
         auto m = fn->getParent();
         for ( auto intr : intrs )
             llvm::IntrinsicLowering( m->getDataLayout() ).LowerIntrinsicCall( intr );
+#endif
     }
 
     bool DataFlowAnalysis::propagate( llvm::Value * to, const type_onion &from ) noexcept
