@@ -1,17 +1,18 @@
 /* TAGS: star min */
-/* VERIFY_OPTS: --symbolic -o nofail:malloc */
+/* VERIFY_OPTS: --lamp unit -o nofail:malloc */
 
-#include <rst/domains.h>
-
+#include <sys/lamp.h>
 #include <cassert>
 
-char * store_ten( char * aggr ) {
-    auto idx = __unit_val_i64();
+char * store_ten( char * aggr )
+{
+    auto idx = __lamp_any_i64();
     aggr[idx] = 10;
     return aggr;
 }
 
-int main() {
-    auto aggr = static_cast< char * >( __unit_aggregate() );
+int main()
+{
+    auto aggr = __lamp_any_array();
     auto res = store_ten( aggr );
 }
