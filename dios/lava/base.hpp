@@ -50,6 +50,7 @@ namespace __lava
 
         using base::base;
 
+        tagged_array() { base::resize( 1, -1 ); }
         tagged_array( const tagged_array &o, typename base::construct_shared_t s ) : base( o, s ) {}
 
         auto  end()       { return base::end() - 1; }
