@@ -21,6 +21,7 @@ namespace __lava
     {
         enum value_t { no = 0, yes = 1, maybe = 2 } value;
         constexpr tristate( value_t val = maybe ) noexcept : value( val ) { }
+        explicit constexpr tristate( uint8_t x ) : tristate( value_t( x ) ) {}
 
         bool lower() const noexcept;
         static tristate lift( bool v ) noexcept { return v ? yes : no; }
