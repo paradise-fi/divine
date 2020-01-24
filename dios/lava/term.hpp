@@ -68,7 +68,7 @@ namespace __lava
         static term any()
         {
             constexpr auto op = brq::smt_match_op< brq::smt_op_var, bitwidth_v< T > >;
-            return { brq::smt_atom_t< T >( op, counter() ) };
+            return { brq::smt_atom_t< brq::smt_varid_t >( op, counter() ) };
         }
 
         template< typename T >
