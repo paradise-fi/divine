@@ -117,6 +117,7 @@ namespace __lava
     struct domain_mixin
     {
         using st = self_t;
+        using sr = const self_t &;
         using bw = bitwidth_t;
 
         static st lift_i1( i1 v )   { return st::lift( v ); }
@@ -139,70 +140,70 @@ namespace __lava
             // return st::any();
         }
 
-        static st op_add ( st, st ) { return fail(); }
-        static st op_sub ( st, st ) { return fail(); }
-        static st op_mul ( st, st ) { return fail(); }
-        static st op_sdiv( st, st ) { return fail(); }
-        static st op_udiv( st, st ) { return fail(); }
-        static st op_srem( st, st ) { return fail(); }
-        static st op_urem( st, st ) { return fail(); }
+        static st op_add ( sr, sr ) { return fail(); }
+        static st op_sub ( sr, sr ) { return fail(); }
+        static st op_mul ( sr, sr ) { return fail(); }
+        static st op_sdiv( sr, sr ) { return fail(); }
+        static st op_udiv( sr, sr ) { return fail(); }
+        static st op_srem( sr, sr ) { return fail(); }
+        static st op_urem( sr, sr ) { return fail(); }
 
-        static st op_fadd( st, st ) { return fail(); }
-        static st op_fsub( st, st ) { return fail(); }
-        static st op_fmul( st, st ) { return fail(); }
-        static st op_fdiv( st, st ) { return fail(); }
-        static st op_frem( st, st ) { return fail(); }
+        static st op_fadd( sr, sr ) { return fail(); }
+        static st op_fsub( sr, sr ) { return fail(); }
+        static st op_fmul( sr, sr ) { return fail(); }
+        static st op_fdiv( sr, sr ) { return fail(); }
+        static st op_frem( sr, sr ) { return fail(); }
 
-        static st op_shl ( st, st ) { return fail(); }
-        static st op_ashr( st, st ) { return fail(); }
-        static st op_lshr( st, st ) { return fail(); }
-        static st op_and ( st, st ) { return fail(); }
-        static st op_or  ( st, st ) { return fail(); }
-        static st op_xor ( st, st ) { return fail(); }
+        static st op_shl ( sr, sr ) { return fail(); }
+        static st op_ashr( sr, sr ) { return fail(); }
+        static st op_lshr( sr, sr ) { return fail(); }
+        static st op_and ( sr, sr ) { return fail(); }
+        static st op_or  ( sr, sr ) { return fail(); }
+        static st op_xor ( sr, sr ) { return fail(); }
 
-        static st op_eq ( st, st ) { return fail(); }
-        static st op_neq( st, st ) { return fail(); }
-        static st op_ugt( st, st ) { return fail(); }
-        static st op_uge( st, st ) { return fail(); }
-        static st op_ult( st, st ) { return fail(); }
-        static st op_ule( st, st ) { return fail(); }
-        static st op_sgt( st, st ) { return fail(); }
-        static st op_sge( st, st ) { return fail(); }
-        static st op_slt( st, st ) { return fail(); }
-        static st op_sle( st, st ) { return fail(); }
+        static st op_eq ( sr, sr ) { return fail(); }
+        static st op_neq( sr, sr ) { return fail(); }
+        static st op_ugt( sr, sr ) { return fail(); }
+        static st op_uge( sr, sr ) { return fail(); }
+        static st op_ult( sr, sr ) { return fail(); }
+        static st op_ule( sr, sr ) { return fail(); }
+        static st op_sgt( sr, sr ) { return fail(); }
+        static st op_sge( sr, sr ) { return fail(); }
+        static st op_slt( sr, sr ) { return fail(); }
+        static st op_sle( sr, sr ) { return fail(); }
 
-        static st op_foeq( st, st ) { return fail(); }
-        static st op_fogt( st, st ) { return fail(); }
-        static st op_foge( st, st ) { return fail(); }
-        static st op_folt( st, st ) { return fail(); }
-        static st op_fole( st, st ) { return fail(); }
-        static st op_ford( st, st ) { return fail(); }
-        static st op_funo( st, st ) { return fail(); }
-        static st op_fueq( st, st ) { return fail(); }
-        static st op_fugt( st, st ) { return fail(); }
-        static st op_fuge( st, st ) { return fail(); }
-        static st op_fult( st, st ) { return fail(); }
-        static st op_fule( st, st ) { return fail(); }
+        static st op_foeq( sr, sr ) { return fail(); }
+        static st op_fogt( sr, sr ) { return fail(); }
+        static st op_foge( sr, sr ) { return fail(); }
+        static st op_folt( sr, sr ) { return fail(); }
+        static st op_fole( sr, sr ) { return fail(); }
+        static st op_ford( sr, sr ) { return fail(); }
+        static st op_funo( sr, sr ) { return fail(); }
+        static st op_fueq( sr, sr ) { return fail(); }
+        static st op_fugt( sr, sr ) { return fail(); }
+        static st op_fuge( sr, sr ) { return fail(); }
+        static st op_fult( sr, sr ) { return fail(); }
+        static st op_fule( sr, sr ) { return fail(); }
 
-        static st op_ffalse( st, st ) { return fail(); }
-        static st op_ftrue ( st, st ) { return fail(); }
+        static st op_ffalse( sr, sr ) { return fail(); }
+        static st op_ftrue ( sr, sr ) { return fail(); }
 
-        static st op_trunc  ( st, bw ) { return fail(); }
-        static st op_fptrunc( st, bw ) { return fail(); }
-        static st op_sitofp ( st, bw ) { return fail(); }
-        static st op_uitofp ( st, bw ) { return fail(); }
-        static st op_zext   ( st, bw ) { return fail(); }
-        static st op_zfit   ( st, bw ) { return fail(); }
-        static st op_sext   ( st, bw ) { return fail(); }
-        static st op_fpext  ( st, bw ) { return fail(); }
-        static st op_fptosi ( st, bw ) { return fail(); }
-        static st op_fptoui ( st, bw ) { return fail(); }
+        static st op_trunc  ( sr, bw ) { return fail(); }
+        static st op_fptrunc( sr, bw ) { return fail(); }
+        static st op_sitofp ( sr, bw ) { return fail(); }
+        static st op_uitofp ( sr, bw ) { return fail(); }
+        static st op_zext   ( sr, bw ) { return fail(); }
+        static st op_zfit   ( sr, bw ) { return fail(); }
+        static st op_sext   ( sr, bw ) { return fail(); }
+        static st op_fpext  ( sr, bw ) { return fail(); }
+        static st op_fptosi ( sr, bw ) { return fail(); }
+        static st op_fptoui ( sr, bw ) { return fail(); }
 
-        static st op_concat ( st, st ) { return fail(); }
-        static st op_extract( st, bw, bw ) { return fail(); }
+        static st op_concat ( sr, sr ) { return fail(); }
+        static st op_extract( sr, bw, bw ) { return fail(); }
 
-        static st op_gep( st, st, uint64_t ) { return fail(); }
-        static st op_store( st, st, bw ) { return fail(); }
-        static st op_load( st, bw ) { return fail(); }
+        static st op_gep( sr, sr, uint64_t ) { return fail(); }
+        static st op_store( sr, sr, bw ) { return fail(); }
+        static st op_load( sr, bw ) { return fail(); }
     };
 }
