@@ -37,9 +37,8 @@ namespace __lava
 
     struct constant : constant_storage, domain_mixin< constant >
     {
-        using constant_storage::constant_storage;
-
-        constant( constant_data::type_t t, bitwidth_t bw, uint64_t v ) noexcept
+        constant() = default;
+        constant( constant_data::type_t t, bitwidth_t bw, uint64_t v )
             : tagged_storage< constant_data >( constant_data{ v, t, bw } )
         {}
 

@@ -46,8 +46,10 @@ namespace __lava
 
     struct term : brq::smt_expr< tagged_array_adaptor >, domain_mixin< term >
     {
-        static constexpr struct {} tag;
         using base = brq::smt_expr< tagged_array_adaptor >;
+
+        term() = default;
+        term( void *v, typename base::construct_shared_t s ) : base( v, s ) {}
 
         template< typename... args_t >
         term( const args_t & ... args )
