@@ -21,12 +21,10 @@
  * compiled into a separate bitcode file which contains exactly one copy
  * (build) of this file. See e.g. dios/metadom/trivial.cpp for an example. */
 
-#include <sys/cdefs.h>
+#include <sys/lamp.h>
 #include <dios/lava/base.hpp> /* iN */
 
-struct wrapped_ptr { void *ptr; };
-
-using ptr = wrapped_ptr;
+using ptr = __lamp_ptr;
 using dom = __lamp::meta_domain;
 using bw = __lava::bitwidth_t;
 
