@@ -222,7 +222,11 @@ namespace brq
             memcpy( this, &o, o.size() );
         }
 
-        int arity() const { return smt_traits( op ).arity; }
+        bool is_const()   const { return smt_traits( op ).is_const(); }
+        bool is_resize()  const { return smt_traits( op ).is_resize(); }
+        bool is_cast()    const { return smt_traits( op ).is_cast(); }
+        bool is_extract() const { return op == smt_op::bv_extract; }
+        int  arity()      const { return smt_traits( op ).arity; }
         size_t size() const { return 1 + smt_imm( op ); }
         size_t imm_size() const { return smt_imm( op ); }
         smt_varid_t varid() const { return smt_traits( op ).is_var() ? imm_get< smt_varid_t >() : 0; }
