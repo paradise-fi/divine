@@ -337,7 +337,7 @@ namespace lart::abstract
             return DomainKind::scalar;
         }
 
-        void add_meta( llvm::Instruction *val, const std::string &, DomainKind kind )
+        void add_meta( llvm::Instruction *val, const std::string &op, DomainKind kind )
         {
             auto type = _types.get( val );
 
@@ -345,6 +345,14 @@ namespace lart::abstract
                 return;
 
             meta::abstract::set( val, to_string( kind ) );
+
+            if ( !op.empty() )
+            {
+                auto fn = val->getModule()->getFunction( "__lamp_" + op );
+                if ( !fn )
+                    brq::raise() << "required function " << "__lamp_" << op << " is missing";
+                meta::set_value_as_meta( val, meta::tag::operation::impl, fn );
+            }
         }
 
         void visitStoreInst( llvm::StoreInst &store )

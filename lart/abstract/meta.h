@@ -50,6 +50,7 @@ namespace lart::abstract::meta
         {
             constexpr const char function[] = "lart.op.function";
             constexpr const char type[] = "lart.op.type";
+            constexpr const char impl[] = "lart.op.impl";
 
             constexpr const char freeze[] = "lart.op.freeze";
             constexpr const char thaw[] = "lart.op.thaw";
