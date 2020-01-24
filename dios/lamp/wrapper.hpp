@@ -186,8 +186,15 @@ extern "C"
     export ptr __lamp_fptosi ( ptr a, bw  b ) { return wrap( dom::op_fptosi,  a, b ); }
     export ptr __lamp_fptoui ( ptr a, bw  b ) { return wrap( dom::op_fptoui,  a, b ); }
 
-    /* TODO aggregate operations */
+    export uint8_t __lamp_to_tristate( ptr v )
+    {
+        dom a( v.ptr, dom::construct_shared );
+        auto tri = dom::to_tristate( a );
+        a.disown();
+        return tri.value;
+    }
 
+    export ptr __lamp_assume( ptr a, ptr b, bool c ) { return wrap( dom::assume, a, b, c ); }
     export ptr __lamp_extract( ptr a, bw s, bw e ) { return wrap( dom::op_extract, a, s, e ); }
-    export bool __lamp_lower_tristate( __lava::tristate tr ) { return static_cast< bool >( tr ); }
+    export bool __lamp_decide( uint8_t tr ) { return bool( __lava::tristate( tr ) ); }
 }
