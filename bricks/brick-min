@@ -294,21 +294,36 @@ namespace brq
 
     using split_view = std::pair< std::string_view, std::string_view >;
 
-    static inline split_view split( std::string_view p, char d, bool reverse = false )
+    static inline split_view split( std::string_view p, char d, bool reverse = false ) noexcept
     {
         auto s = reverse ? p.rfind( d ) : p.find( d );
         if ( s == p.npos )
             return reverse ? split_view{ "", p } : split_view{ p, "" };
-        return { p.substr( 0, s ), p.substr( s + 1, p.npos ) };
+        auto q = p;
+        q.remove_prefix( s + 1 );
+        p.remove_suffix( p.size() - s );
+        return { p, q };
     }
 
-    static inline bool starts_with( std::string_view s, std::string_view t )
+    static inline bool starts_with( std::string_view s, std::string_view t ) noexcept
     {
-        return s.size() >= t.size() && s.compare( 0, t.size(), t ) == 0;
+        if ( s.size() >= t.size() )
+        {
+            s.remove_suffix( s.size() - t.size() );
+            return s.compare( t ) == 0;
+        }
+        else
+            return false;
     }
 
-    static inline bool ends_with( std::string_view s, std::string_view t )
+    static inline bool ends_with( std::string_view s, std::string_view t ) noexcept
     {
-        return s.size() >= t.size() && s.compare( s.size() - t.size(), s.npos, t ) == 0;
+        if ( s.size() >= t.size() )
+        {
+            s.remove_prefix( s.size() - t.size() );
+            return s.compare( t ) == 0;
+        }
+        else
+            return false;
     }
 }
