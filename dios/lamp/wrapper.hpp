@@ -55,20 +55,49 @@ struct wrapper
 };
 
 template< typename... args_t >
-auto wrap( const args_t & ... args ) { return wrapper::wrap( args... ); }
+static auto wrap( const args_t & ... args ) { return wrapper::wrap( args... ); }
+
+static uint32_t tainted = 0;
+
+[[gnu::constructor]] void tainted_init()
+{
+    __vm_pointer_t ptr = __vm_pointer_split( &tainted );
+    __vm_poke( _VM_ML_Taints, ptr.obj, ptr.off, 4, 0xF );
+}
+
+template< typename op_t, typename arg_t >
+static arg_t lift( op_t op, arg_t arg )
+{
+    __lart_stash( op( arg ).disown() );
+    if constexpr ( std::is_arithmetic_v< arg_t > )
+        return arg + tainted;
+    if constexpr ( std::is_same_v< arg_t, void * > )
+        return static_cast< char * >( arg ) + tainted;
+}
 
 #define export __invisible __flatten
+#define scalar export __annotate( lart.abstract.return.scalar )
 
 extern "C"
 {
-    export ptr __lamp_lift_i1( i1 v )     { return wrap( dom::lift_i1,  v ); }
-    export ptr __lamp_lift_i8( i8 v )     { return wrap( dom::lift_i8,  v ); }
-    export ptr __lamp_lift_i16( i16 v )   { return wrap( dom::lift_i16, v ); }
-    export ptr __lamp_lift_i32( i32 v )   { return wrap( dom::lift_i32, v ); }
-    export ptr __lamp_lift_i64( i64 v )   { return wrap( dom::lift_i64, v ); }
-    export ptr __lamp_lift_f32( f32 v )   { return wrap( dom::lift_f64, v ); }
-    export ptr __lamp_lift_f64( f64 v )   { return wrap( dom::lift_f64, v ); }
-    export ptr __lamp_lift_ptr( void *v ) { return wrap( dom::lift_ptr, v ); }
+    scalar i1  __lamp_lift_i1 ( i1  v )     { return lift( dom::lift_i1,  v ); }
+    scalar i8  __lamp_lift_i8 ( i8  v )     { return lift( dom::lift_i8,  v ); }
+    scalar i16 __lamp_lift_i16( i16 v )     { return lift( dom::lift_i16, v ); }
+    scalar i32 __lamp_lift_i32( i32 v )     { return lift( dom::lift_i32, v ); }
+    scalar i64 __lamp_lift_i64( i64 v )     { return lift( dom::lift_i64, v ); }
+    scalar f32 __lamp_lift_f32( f32 v )     { return lift( dom::lift_f64, v ); }
+    scalar f64 __lamp_lift_f64( f64 v )     { return lift( dom::lift_f64, v ); }
+
+    scalar ptr __lamp_wrap_i1 ( i1  v )     { return wrap( dom::lift_i1,  v ); }
+    scalar ptr __lamp_wrap_i8 ( i8  v )     { return wrap( dom::lift_i8,  v ); }
+    scalar ptr __lamp_wrap_i16( i16 v )     { return wrap( dom::lift_i16, v ); }
+    scalar ptr __lamp_wrap_i32( i32 v )     { return wrap( dom::lift_i32, v ); }
+    scalar ptr __lamp_wrap_i64( i64 v )     { return wrap( dom::lift_i64, v ); }
+    scalar ptr __lamp_wrap_f32( f32 v )     { return wrap( dom::lift_f64, v ); }
+    scalar ptr __lamp_wrap_f64( f64 v )     { return wrap( dom::lift_f64, v ); }
+
+    export ptr   __lamp_wrap_ptr( void *v ) { return wrap( dom::lift_ptr, v ); }
+    export void *__lamp_lift_ptr( void *v ) { return lift( dom::lift_ptr, v ); }
 
     /* TODO freeze, melt */
 
