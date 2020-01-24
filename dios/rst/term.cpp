@@ -21,12 +21,12 @@ namespace __lava
             if ( auto new_it = decomp.find( new_ ); new_it != decomp.end() )
             {
                 new_it->second.apply( old_it->second, brq::smt_op::constraint );
-                __vm_trace( _VM_T_Assume, brq::bitcast< void * >( new_it->second ) );
+                __vm_trace( _VM_T_Assume, new_it->second.begin() );
             }
             else
             {
                 decomp.emplace( new_, old_it->second );
-                __vm_trace( _VM_T_Assume, brq::bitcast< void * >( decomp.find( new_ )->second ) );
+                __vm_trace( _VM_T_Assume, decomp.find( new_ )->second.begin() );
             }
 
             decomp.erase( old_it );
@@ -55,11 +55,11 @@ namespace __lava
         auto id = brq::smt_decompose< stack_t >( c, __term_state->uf, update_rpns );
 
         if ( !id )
-            __vm_trace( _VM_T_Assume, brq::bitcast< void * >( c ) );
+            __vm_trace( _VM_T_Assume, c.begin() );
         else  // append to relevant decomp
         {
             append_term( id );
-            __vm_trace( _VM_T_Assume, brq::bitcast< void * >( decomp.find( id )->second ) );
+            __vm_trace( _VM_T_Assume, decomp.find( id )->second.begin() );
         }
 
         return t;
