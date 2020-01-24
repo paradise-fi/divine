@@ -33,7 +33,7 @@ namespace __lava
         __noinline unit() {}
 
         template< typename type > static unit lift( type ) { return {}; }
-        template< typename type > static unit any( bitwidth_t ) { return {}; }
+        template< typename type > static unit any() { return {}; }
 
         static unit lift_any() { return {}; }
         static unit lift_any_ptr() { return {}; }
@@ -44,7 +44,7 @@ namespace __lava
 
         static unit op_insertvalue( unit, unit, uint64_t ) { return {}; }
         static unit op_extractvalue( unit, uint64_t ) { return {}; }
-        static unit op_gep( size_t, unit, unit ) { return {}; }
+        static unit op_gep( unit, unit, uint64_t ) { return {}; }
         static unit assume( unit, unit, bool ) { return {}; }
 
         static tristate to_tristate( unit ) { return { tristate::maybe }; }
