@@ -12,11 +12,15 @@ namespace rt {
 
 using namespace cc;
 
-void DiosCC::link_dios_config( std::string n )
+void DiosCC::link_dios_config( std::string n, std::string lamp )
 {
     linkEntireArchive( "rst" );
     auto mod = load_object( find_object( "config/" + n ) );
     link( std::move( mod ) );
+
+    if ( !lamp.empty() )
+        link( load_object( find_object( "lamp/" + lamp ) ) );
+
     for ( int i = 0; i < 3; ++i )
     {
         linkLib( "dios" );
