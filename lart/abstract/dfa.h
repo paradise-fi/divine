@@ -357,32 +357,27 @@ namespace lart::abstract
 
         void visitStoreInst( llvm::StoreInst &store )
         {
-            if ( maybe_aggregate( store.getPointerOperand() ) ) {
-                auto op = std::string( op_prefix ) + "store";
-                add_meta( &store, op, DomainKind::aggregate );
-            } else {
+            if ( maybe_aggregate( store.getPointerOperand() ) )
+                add_meta( &store, "store", DomainKind::aggregate );
+            else
                 meta::set( &store, meta::tag::operation::freeze );
-            }
         }
 
         void visitLoadInst( llvm::LoadInst &load )
         {
-            if ( maybe_aggregate( load.getPointerOperand() ) ) {
-                auto op = std::string( op_prefix ) + "load";
-                add_meta( &load, op, DomainKind::aggregate );
-            } else {
+            if ( maybe_aggregate( load.getPointerOperand() ) )
+                add_meta( &load, "load", DomainKind::aggregate );
+            else
+            {
                 meta::set( &load, meta::tag::operation::thaw );
-
-                auto op = std::string( op_prefix ) + "thaw";
-                add_meta( &load, op, DomainKind::scalar );
+                /* FIXME the zfit here only works for aligned, little-endian loads */
+                add_meta( &load, "zfit", DomainKind::scalar );
             }
         }
 
         void visitCmpInst( llvm::CmpInst &cmp )
         {
-            auto op = std::string( op_prefix )
-                    + PredicateTable.at( cmp.getPredicate() );
-            add_meta( &cmp, op, kind( &cmp ) );
+            add_meta( &cmp, PredicateTable.at( cmp.getPredicate() ), kind( &cmp ) );
         }
 
         void visitBitCastInst( llvm::BitCastInst & ) { /* skip */ }
@@ -391,16 +386,12 @@ namespace lart::abstract
 
         void visitCastInst( llvm::CastInst &cast )
         {
-            auto op = std::string( op_prefix )
-                    + std::string( cast.getOpcodeName() );
-            add_meta( &cast, op, kind( &cast ) );
+            add_meta( &cast, cast.getOpcodeName(), kind( &cast ) );
         }
 
         void visitBinaryOperator( llvm::BinaryOperator &bin )
         {
-            auto op = std::string( op_prefix )
-                    + std::string( bin.getOpcodeName() );
-            add_meta( &bin, op, kind( &bin ) );
+            add_meta( &bin, bin.getOpcodeName(), kind( &bin ) );
         }
 
         void visitReturnInst( llvm::ReturnInst &ret )
@@ -416,11 +407,12 @@ namespace lart::abstract
                 if ( !is_abstractable( fn ) && meta::abstract::has( &call ) )
                     continue;
 
-                auto prefix = is_abstractable( fn ) ? fn_prefix : op_prefix;
-
                 ASSERT( fn->hasName() );
-                auto op = prefix + fn->getName().str();
-                add_meta( &call, op, kind( &call ) );
+
+                if ( is_abstractable( fn ) )
+                    add_meta( &call, "fn_" + fn->getName().str(), kind( &call ) );
+                else
+                    add_meta( &call, "", kind( &call ) );
             }
         }
 
@@ -432,22 +424,18 @@ namespace lart::abstract
         void visitGetElementPtrInst( llvm::GetElementPtrInst &gep )
         {
             auto ptr = gep.getPointerOperand();
-            if ( maybe_aggregate( ptr ) ) {
-                auto op = std::string( op_prefix ) + "gep";
-                add_meta( &gep, op, DomainKind::aggregate );
-            }
+            if ( maybe_aggregate( ptr ) )
+                add_meta( &gep, "gep", DomainKind::aggregate );
         }
 
         void visitExtractValueInst( llvm::ExtractValueInst &ev )
         {
-            auto op = std::string( op_prefix ) + "extractvalue";
-            add_meta( &ev, op, DomainKind::aggregate );
+            add_meta( &ev, "extractvalue", DomainKind::aggregate );
         }
 
         void visitInsertValueInst( llvm::InsertValueInst &iv )
         {
-            auto op = std::string( op_prefix ) + "insertvalue";
-            add_meta( &iv, op, DomainKind::aggregate );
+            add_meta( &iv, "insertvalue", DomainKind::aggregate );
         }
     };
 
