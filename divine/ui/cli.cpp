@@ -271,6 +271,7 @@ void with_bc::report_options()
     }
 
     _log->info( "dios config: " + _bc_opts.dios_config + "\n", true );
+    _log->info( "lamp config: \"" + _bc_opts.lamp_config + "\"\n", true );
 
     if ( _bc_opts.symbolic )
         _log->info( "symbolic: 1\n" );

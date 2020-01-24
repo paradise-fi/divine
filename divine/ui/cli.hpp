@@ -222,6 +222,7 @@ namespace divine::ui
             c.opt( "--capture", _vfs ) << "capture parts of the filesystem";
             c.opt( "--stdin", _stdin ) << "capture a file for use as standard input";
             c.opt( "--dios-config", _bc_opts.dios_config ) << "select a dios config manually";
+            c.opt( "--lamp-config", _bc_opts.lamp_config ) << "select abstract domain(s) to use";
 
             c.section( "Bitcode Transforms" );
             c.flag( "--static-reduction", _bc_opts.static_reduction )
