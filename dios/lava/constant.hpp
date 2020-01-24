@@ -35,6 +35,24 @@ namespace __lava
 
     using constant_storage = tagged_storage< constant_data >;
 
+    template< typename T > struct number_type { using type = T; };
+    template< bool, int > struct number_;
+
+    template<> struct number_< true, 1 >  : number_type< bool > {};
+    template<> struct number_< true, 8 >  : number_type< int8_t > {};
+    template<> struct number_< true, 16 > : number_type< int16_t > {};
+    template<> struct number_< true, 32 > : number_type< int32_t > {};
+    template<> struct number_< true, 64 > : number_type< int64_t > {};
+
+    template<> struct number_< false, 1 >  : number_type< bool > {};
+    template<> struct number_< false, 8 >  : number_type< uint8_t > {};
+    template<> struct number_< false, 16 > : number_type< uint16_t > {};
+    template<> struct number_< false, 32 > : number_type< uint32_t > {};
+    template<> struct number_< false, 64 > : number_type< uint64_t > {};
+
+    template< bool s, int w >
+    using number = typename number_< s, w >::type;
+
     struct constant : constant_storage, domain_mixin< constant >
     {
         constant() = default;
@@ -72,14 +90,14 @@ namespace __lava
             // UNREACHABLE( "Constant domain does not provide lift_any operation" );
         }
 
-        template< typename T >
-        uint64_t trunc( uint64_t v ) noexcept
+        template< bool _signed, int bw >
+        static number< _signed, bw > cast( constant c )
         {
-            return static_cast< T >( v );
+            return c->value;
         }
 
-        template< typename F, typename... val_t  >
-        static constant wtu( F f_, const val_t & ... vals ) noexcept
+        template< bool _signed, typename F, typename... val_t  >
+        static constant with_type( F f_, const val_t & ... vals )
         {
             bitwidth_t bw = std::max( { vals->bw ... } );
             const auto t_bv = constant_data::bv;
@@ -88,23 +106,19 @@ namespace __lava
             if ( ( ( vals->type == constant_data::bv ) && ... ) )
                 switch ( bw )
                 {
-                    case  1: return { t_bv, bw, f( static_cast< bool >( vals->value ) ... ) };
-                    case  8: return { t_bv, bw, f( static_cast< uint8_t >( vals->value ) ... ) };
-                    case 16: return { t_bv, bw, f( static_cast< uint16_t >( vals->value ) ... ) };
-                    case 32: return { t_bv, bw, f( static_cast< uint32_t >( vals->value ) ... ) };
-                    case 64: return { t_bv, bw, f( static_cast< uint64_t >( vals->value ) ... ) };
+                    case  1: return { t_bv, bw, f( cast< _signed,  1 >( vals ) ... ) };
+                    case  8: return { t_bv, bw, f( cast< _signed,  8 >( vals ) ... ) };
+                    case 16: return { t_bv, bw, f( cast< _signed, 16 >( vals ) ... ) };
+                    case 32: return { t_bv, bw, f( cast< _signed, 32 >( vals ) ... ) };
+                    case 64: return { t_bv, bw, f( cast< _signed, 64 >( vals ) ... ) };
                 }
 
             __builtin_trap();
             // NOT_IMPLEMENTED();
         }
 
-        template< typename F, typename... val_t  >
-        static constant wts( F, const val_t & ... ) noexcept
-        {
-            __builtin_trap();
-            // NOT_IMPLEMENTED();
-        }
+        static constexpr auto wtu = []( const auto & ... xs ) { return with_type< false >( xs... ); };
+        static constexpr auto wts = []( const auto & ... xs ) { return with_type< true  >( xs... ); };
 
         static constant op_thaw( constant c, uint8_t bw ) noexcept
         {
