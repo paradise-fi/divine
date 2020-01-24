@@ -115,7 +115,7 @@ void BitCode::lazy_link_dios()
     drv.link( std::move( _module ) );
 
     if ( !has_boot )
-        drv.link_dios_config( _opts.dios_config );
+        drv.link_dios_config( _opts.dios_config, _opts.lamp_config );
     _module = drv.takeLinked();
 }
 
@@ -188,7 +188,7 @@ void BitCode::do_lart()
     if ( _opts.svcomp )
         lart.setup( lart::svcomp::svcompPass() );
 
-    if ( _opts.symbolic )
+    if ( _opts.symbolic || !_opts.lamp_config.empty() )
         lart.setup( lart::abstract::passes() );
 
     if ( !_opts.synchronous )
@@ -304,6 +304,7 @@ BCOptions BCOptions::from_report( brick::yaml::Parser &parsed )
     opts.static_reduction = parsed.getOr( { "static reduction" }, opts.static_reduction );
     opts.dios_config = "default";
     opts.dios_config = parsed.getOr( { "dios config" }, opts.dios_config );
+    opts.lamp_config = parsed.getOr( { "lamp config" }, opts.lamp_config );
 
     auto leakcheck = std::vector< std::string >();
     leakcheck = parsed.getOr( { "leak check", "*" }, leakcheck );

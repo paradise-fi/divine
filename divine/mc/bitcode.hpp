@@ -70,7 +70,7 @@ struct BCOptions
 
     Env bc_env;
     std::vector< std::string > lart_passes;
-    std::string dios_config;
+    std::string dios_config, lamp_config;
     tracepoint autotrace;
     checkpoint leakcheck;
     std::string relaxed;
