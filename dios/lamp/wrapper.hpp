@@ -73,6 +73,16 @@ static arg_t lift( op_t op, arg_t arg )
         return static_cast< char * >( arg ) + tainted;
 }
 
+template< typename dom, typename type >
+static auto any()
+{
+    __lart_stash( dom::template any< type >().disown() );
+    if constexpr ( std::is_pointer_v< type > )
+        return reinterpret_cast< type >( uint64_t( tainted ) );
+    else
+        return static_cast< type >( tainted );
+}
+
 #define export __invisible __flatten
 #define scalar export __annotate( lart.abstract.return.scalar )
 
@@ -96,6 +106,11 @@ extern "C"
 
     export ptr   __lamp_wrap_ptr( void *v ) { return wrap( dom::lift_ptr, v ); }
     export void *__lamp_lift_ptr( void *v ) { return lift( dom::lift_ptr, v ); }
+
+    scalar i8    __lamp_any_i8()    { return any< dom, i8  >(); }
+    scalar i16   __lamp_any_i16()   { return any< dom, i16 >(); }
+    scalar i32   __lamp_any_i32()   { return any< dom, i32 >(); }
+    scalar i64   __lamp_any_i64()   { return any< dom, i64 >(); }
 
     /* TODO freeze, melt */
 
