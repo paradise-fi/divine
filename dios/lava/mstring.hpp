@@ -1,14 +1,30 @@
-// -*- C++ -*- (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
+// -*- mode: C++; indent-tabs-mode: nil; c-basic-offset: 4 -*-
+
+/*
+ * (c) 2020 Petr Ročkai <code@fixp.eu>
+ * (c) 2019 Henrich Lauko <xlauko@mail.muni.cz>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
 #pragma once
 
-#include <rst/base.hpp>
-#include <rst/scalar.hpp>
-
-#include <util/array.hpp>
+#include "base.hpp"
+#include "scalar.hpp"
 #include <brick-ptr>
 
-namespace __dios::rst::abstract {
-
+namespace __lava
+{
     template< typename Index, typename Char >
     struct mstring_t : tagged_abstract_domain_t
     {
@@ -162,8 +178,11 @@ namespace __dios::rst::abstract {
                 return mstr;
 
             char prev = str[ 0 ];
-            for ( uint64_t i = 1; i < size; ++i ) {
-                if ( prev != str[ i ] ) {
+
+            for ( uint64_t i = 1; i < arr.size; ++i )
+            {
+                if ( prev != str[ i ] )
+                {
                     mstr.push_char( prev );
                     mstr.push_bound( i );
                     prev = str[ i ];
@@ -523,17 +542,18 @@ namespace __dios::rst::abstract {
             if ( rseg.empty() )
                 rseg = rin.next_segment( rseg );
 
-            while ( lseg != lin.terminal() && rseg != rin.terminal() ) {
-                if ( static_cast< bool >( lseg.value() != rseg.value() ) ) {
+            while ( lseg != lin.terminal() && rseg != rin.terminal() )
+            {
+                if ( static_cast< bool >( lseg.value() != rseg.value() ) )
                     return lseg.value() - rseg.value();
-                } else {
+                else
+                {
                     index_t left = lseg.to() - lhs.offset();
                     index_t right = rseg.to() - rhs.offset();
-                    if ( static_cast< bool >( left > right ) ) {
+                    if ( static_cast< bool >( left > right ) )
                         return lseg.value() - rin.next_segment( rseg ).value();
-                    } else if ( static_cast< bool >( left < right ) ) {
+                    else if ( static_cast< bool >( left < right ) )
                         return lin.next_segment( lseg ).value() - rseg.value();
-                    }
                 }
 
                 lseg = lin.next_segment( lseg );
@@ -565,9 +585,12 @@ namespace __dios::rst::abstract {
         _LART_INLINE
         static mstring_ptr strchr( mstring_ptr str, character_t ch ) noexcept
         {
-            auto seg = str->segment_at_current_offset();
-            while ( !str->is_beyond_last_segment( seg ) ) {
-                if ( seg.has_value( ch ) ) {
+            auto seg = str.segment_at_current_offset();
+
+            while ( !str->is_beyond_last_segment( seg ) )
+            {
+                if ( seg.has_value( ch ) )
+                {
                     auto off = seg.from();
                     if ( seg.begin() == str.bounds().begin() )
                         return str;
@@ -597,31 +620,37 @@ namespace __dios::rst::abstract {
             std::copy( dst.bounds().begin(), dseg.begin(), std::back_inserter( bounds ) );
             std::copy( dst.values().begin(), &dseg.value(), std::back_inserter( values ) );
 
-            if ( static_cast< bool >( dseg.from() == dst.offset() ) ) {
+            if ( static_cast< bool >( dseg.from() == dst.offset() ) )
                 bounds.push_back( dseg.from() );
-            } else {
+            else
+            {
                 bounds.push_back( dseg.from() );
-                if ( static_cast< bool >( dseg.value() != sseg.value() ) ) {
+                if ( static_cast< bool >( dseg.value() != sseg.value() ) )
+                {
                     values.push_back( dseg.value() );
                     bounds.push_back( dst.offset() );
                 }
             }
 
-            if ( values.size() > 0 && static_cast< bool >( values.back() == sseg.value() ) ) {
+            if ( values.size() > 0 && static_cast< bool >( values.back() == sseg.value() ) )
+            {
                 values.pop_back();
                 bounds.pop_back();
             }
 
-            while ( static_cast< bool >( ( sseg.from() - src.offset() ) < size ) ) {
+            while ( static_cast< bool >( ( sseg.from() - src.offset() ) < size ) )
+            {
                 bounds.push_back( dst.offset() + ( sseg.to() - src.offset() ) );
                 values.push_back( sseg.value() );
                 ++sseg;
             }
 
-            if ( static_cast< bool >( dst.size() > dst.offset() + size ) ) {
+            if ( static_cast< bool >( dst.size() > dst.offset() + size ) )
+            {
                 auto seg = dst->segment_at_index( dst.offset() + size );
-                if ( static_cast< bool >( dseg.value() == values.back() ) ) {
-                    //we will take the value from dst suffix
+                if ( static_cast< bool >( dseg.value() == values.back() ) )
+                {
+                    // we will take the value from dst suffix
                     bounds.pop_back();
                     values.pop_back();
                 }
@@ -693,7 +722,8 @@ namespace __dios::rst::abstract {
             auto it = bounds().begin();
             for ( auto it = bounds().begin(); std::next( it ) != bounds().end(); ++it )
             {
-                if ( static_cast< bool >( idx >= *it && idx < *std::next( it ) ) ) {
+                if ( static_cast< bool >( idx >= *it && idx < *std::next( it ) ) )
+                {
                     auto nth = std::distance( bounds().begin(), it );
                     return segment_t{ it, std::next( values().begin(), nth ) };
                 }
@@ -709,4 +739,4 @@ namespace __dios::rst::abstract {
         }
     };
 
-} // namespace __dios::rst::abstract
+}
