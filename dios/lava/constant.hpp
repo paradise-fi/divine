@@ -169,8 +169,17 @@ namespace __lava
         static cv op_ashr( cr a, cr b ) { return wts( shr, a, b ); }
         static cv op_lshr( cr a, cr b ) { return wtu( shr, a, b ); }
 
-        static cv op_eq( cr a, cr b ) { return wtu( std::equal_to(), a, b ); }
-        static cv op_ne( cr a, cr b ) { return wtu( std::not_equal_to(), a, b ); }
+        static cv op_eq ( cr a, cr b ) { return wtu( std::equal_to(), a, b ); }
+        static cv op_ne ( cr a, cr b ) { return wtu( std::not_equal_to(), a, b ); }
+        static cv op_ult( cr a, cr b ) { return wtu( std::less(), a, b ); }
+        static cv op_ugt( cr a, cr b ) { return wtu( std::greater(), a, b ); }
+        static cv op_ule( cr a, cr b ) { return wtu( std::less_equal(), a, b ); }
+        static cv op_uge( cr a, cr b ) { return wtu( std::greater_equal(), a, b ); }
+
+        static cv op_slt( cr a, cr b ) { return wts( std::less(), a, b ); }
+        static cv op_sgt( cr a, cr b ) { return wts( std::greater(), a, b ); }
+        static cv op_sle( cr a, cr b ) { return wts( std::less_equal(), a, b ); }
+        static cv op_sge( cr a, cr b ) { return wts( std::greater_equal(), a, b ); }
 
         static cv op_trunc( cv c, bw w ) { return set_bw( c, w ); }
         static cv op_zext( cv c, bw w )  { return set_bw( c, w ); }
