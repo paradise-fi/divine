@@ -43,7 +43,7 @@ namespace __lava
             __dios_fault( fault_v, msg );
         }
 
-        static void out_of_bounds_fault() noexcept
+        static void out_of_bounds_fault()
         {
             fault< _VM_Fault::_VM_F_Memory >( "Access out of bounds." );
         }
@@ -348,27 +348,27 @@ namespace __lava
                 return *this;
             }
 
-            segment_t& operator++() noexcept
+            segment_t& operator++()
             {
                 ++_from;
                 ++_value;
                 return *this;
             }
 
-            segment_t operator++(int) noexcept
+            segment_t operator++(int)
             {
                 segment_t tmp(*this);
                 operator++();
                 return tmp;
             }
 
-            segment_t& operator--() noexcept
+            segment_t& operator--()
             {
                 --_from; --_value;
                 return *this;
             }
 
-            segment_t operator--(int) noexcept
+            segment_t operator--(int)
             {
                 segment_t tmp(*this);
                 operator++();
@@ -391,7 +391,7 @@ namespace __lava
                 return static_cast< bool >( value() == ch );
             }
 
-            bool singleton() const noexcept
+            bool singleton() const
             {
                 return static_cast< bool >( from() + index_t::lift( uint64_t( 1 ) ) == to() );
             }
@@ -421,14 +421,13 @@ namespace __lava
             segment_t begin() { return { bounds.begin(), values.begin() }; }
             segment_t end() { return { bounds.end(), values.end() }; }
 
-            _LART_INLINE
-            segment_t next_segment( segment_t seg ) noexcept
+            segment_t next_segment( segment_t seg )
             {
                 do { ++seg; } while ( seg.begin() != bounds.end() && seg.empty() );
                 return seg;
             }
 
-            segment_t terminal() const noexcept
+            segment_t terminal() const
             {
                 return { std::prev( bounds.end() ), std::prev( values.end() ) };
             }
@@ -437,22 +436,19 @@ namespace __lava
             range_t< values_iterator > values;
         };
 
-        _LART_INLINE
-        segments_range range( segment_t f, segment_t t ) noexcept
+        segments_range range( segment_t f, segment_t t )
         {
             return { { f.begin(), std::next( t.begin() ) }, { f._value, std::next( t._value ) } };
         }
 
-        _LART_INLINE
-        segments_range range( index_t from, index_t to ) noexcept
+        segments_range range( index_t from, index_t to )
         {
             auto f = segment_at_index( from );
             auto t = segment_at_index( to );
             return range( f, t );
         }
 
-        _LART_INLINE
-        segments_range interest() noexcept
+        segments_range interest()
         {
             return range( segment_at_current_offset(), terminal_segment() );
         }
@@ -677,8 +673,7 @@ namespace __lava
         }
 
         // returns first nonepmty segment containing '\0' after offset
-        _LART_INLINE
-        segment_t terminal_segment() noexcept
+        segment_t terminal_segment()
         {
             auto seg = segment_at_current_offset();
             while ( !is_beyond_last_segment( seg ) && !seg.has_value( '\0' ) ) {
@@ -689,7 +684,7 @@ namespace __lava
             return seg;
         }
 
-        index_t terminator() noexcept
+        index_t terminator()
         {
             // begining of the segment of the first occurence of '\0' after offset
             return terminal_segment().from();
@@ -708,13 +703,12 @@ namespace __lava
 
         /* detail */
 
-        bool is_beyond_last_segment( const segment_t& seg ) const noexcept
+        bool is_beyond_last_segment( const segment_t& seg ) const
         {
             return seg.begin() == std::prev( bounds().end() );
         }
 
-        _LART_INLINE
-        segment_t segment_at_index( index_t idx ) noexcept
+        segment_t segment_at_index( index_t idx )
         {
             if ( static_cast< bool >( idx >= size() ) )
                 out_of_bounds_fault();
@@ -732,8 +726,7 @@ namespace __lava
             UNREACHABLE( "MSTRING ERROR: index out of bounds" );
         }
 
-        _LART_INLINE
-        segment_t segment_at_current_offset() noexcept
+        segment_t segment_at_current_offset()
         {
             return segment_at_index( _offset );
         }
