@@ -310,8 +310,8 @@ namespace lart::abstract
     static inline bool is_abstractable( llvm::Function * fn )
     {
         if ( !fn->hasName() )
-            return false; // TODO deal with anonymous functions
-        auto name = "__lart_abstract_fn_" + fn->getName().str();
+            return false;
+        auto name = "__lamp_fn_" + fn->getName().str();
         return fn->getParent()->getFunction( name );
     }
 
