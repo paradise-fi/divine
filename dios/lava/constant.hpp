@@ -183,6 +183,7 @@ namespace __lava
 
         static cv op_trunc( cv c, bw w ) { return set_bw( c, w ); }
         static cv op_zext( cv c, bw w )  { return set_bw( c, w ); }
+        static cv op_zfit( cv c, bw w )  { return set_bw( c, w ); }
         static cv op_sext( cv c, bw w )
         {
             return set_bw( wts( []( auto v ) { return int64_t( v ); }, c ), w );
