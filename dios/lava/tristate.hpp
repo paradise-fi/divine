@@ -27,7 +27,7 @@ namespace __lava
         static tristate lift( bool v ) noexcept { return v ? yes : no; }
         static tristate any() noexcept { return maybe; }
 
-        inline operator bool() const noexcept
+        explicit inline operator bool() const noexcept
         {
             if ( value == maybe )
             {

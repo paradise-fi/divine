@@ -20,7 +20,7 @@ namespace __dios::rst::abstract
         operator domain_t() { return _value; }
         operator domain_t() const { return _value; }
 
-        operator bool()
+        explicit operator bool()
         {
             tristate v = domain_t::to_tristate( _value );
 
