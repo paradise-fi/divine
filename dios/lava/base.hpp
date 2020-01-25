@@ -99,7 +99,8 @@ namespace __lava
         const type *operator->() const { return &**this; }
         type       *operator->()       { return &**this; }
 
-        type &get() { return **this; }
+        type       &get()       { return **this; }
+        const type &get() const { return **this; }
     };
 
     using i1  = bool;
