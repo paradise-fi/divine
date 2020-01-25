@@ -63,13 +63,13 @@ static uint32_t tainted = 0;
     __vm_poke( _VM_ML_Taints, ptr.obj, ptr.off, 4, 0xF );
 }
 
-template< typename op_t, typename arg_t >
-static arg_t lift( op_t op, arg_t arg )
+template< typename op_t, typename arg_t, typename... args_t >
+static arg_t lift( op_t op, arg_t arg, args_t... args )
 {
-    __lart_stash( op( arg ).disown() );
+    __lart_stash( op( arg, args... ).disown() );
     if constexpr ( std::is_arithmetic_v< arg_t > )
         return arg + tainted;
-    if constexpr ( std::is_same_v< arg_t, void * > )
+    if constexpr ( std::is_pointer_v< arg_t > )
         return static_cast< char * >( arg ) + tainted;
 }
 
@@ -107,6 +107,9 @@ extern "C"
 
     export ptr   __lamp_wrap_ptr( void *v ) { return wrap( dom::lift_ptr, v ); }
     export void *__lamp_lift_ptr( void *v ) { return lift( dom::lift_ptr, v ); }
+
+    array void *__lamp_lift_arr( void *v, int s ) { return lift( dom::lift_arr, v, s ); }
+    array char *__lamp_lift_str( char *s ) { return lift( dom::lift_arr, s, strlen( s ) + 1 ); }
 
     scalar i8    __lamp_any_i8()    { return any< dom, i8  >(); }
     scalar i16   __lamp_any_i16()   { return any< dom, i16 >(); }

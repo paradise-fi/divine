@@ -18,6 +18,9 @@ uint64_t __lamp_lift_i64( uint64_t v );
 __lamp_f32 __lamp_lift_f32( __lamp_f32 v );
 __lamp_f64 __lamp_lift_f64( __lamp_f64 v );
 
+void *__lamp_lift_arr( void *v, int s );
+char *__lamp_lift_str( char *s );
+
 __lamp_ptr __lamp_wrap_i1 ( bool     v );
 __lamp_ptr __lamp_wrap_i8 ( uint8_t  v );
 __lamp_ptr __lamp_wrap_i16( uint16_t v );
