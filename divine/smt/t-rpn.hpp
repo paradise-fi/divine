@@ -20,210 +20,146 @@
 
 #include <divine/smt/rpn.hpp>
 #include <brick-assert>
-#include <brick-smt>
 
 #include <cassert>
 #include <algorithm>
 
-namespace divine::t_rpn
+namespace divine::t_smt
 {
     using namespace divine::smt;
-    using namespace brick::smt;
-    using RPN = brick::smt::RPN< std::vector< uint8_t > >;
-    using RPNView = brick::smt::RPNView< RPN >;
 
-    bool operator==( RPN::Constant< uint64_t > c1, RPNView::Constant c2 )
+    struct decomposition
     {
-        return c1.value == c2.value && c1.bitwidth() == c2.bitwidth();
-    }
-
-    struct RPN_decomposition
-    {
-        using VarID = token::VarID;
-        RPN rpn;
-
-        // dummy first byte, identifying the abstract domain type
-        RPN_decomposition() { append( char( 0 ) ); }
-
-        using Constant = RPN::Constant< uint64_t >;   // RPNView::Constant's value is always uint64_t
-        using Variable = RPN::Variable;
         template< typename T > using stack_t = std::vector< T >;
-        using UF = union_find< std::map< VarID, VarID > >;
+        template< typename imm_t > using atom_t = brq::smt_atom_t< imm_t >;
+        using expr_t = brq::smt_expr< std::vector >;
+        using varid_t = brq::smt_varid_t;
+        using var_t = atom_t< varid_t >;
+        using const_t = atom_t< uint64_t >;
+        using op = brq::smt_op;
+        using uf_t = brq::union_find< std::map< int, int > >;
 
-        auto decompose( RPN &r, UF &uf ) { return brick::smt::decompose< stack_t >( r, uf ); }
+        expr_t expr;
+        uf_t uf;
 
-        template < typename T >
-        void append( T t )
-        {
-            rpn.insert( rpn.end(), bytes_begin( t ), bytes_end( t ) );
-        }
+        auto decompose() { return brq::smt_decompose< stack_t >( expr, uf ); }
+        void clear() { expr.clear(); }
 
-        void clear()
-        {
-            rpn.clear();
-            append( char( 0 ) );
-        }
-
-        Variable add_var( VarID id )
-        {
-            Variable v{ { Op::VarI32 }, id };
-            append( v );
-            return v;
-        }
-
-        Constant add_con( uint64_t val )
-        {
-            Constant c{ { Op( -64 ) }, val };
-            append( c );
-            return c;
-        }
-
-        template < typename T >
-        void check_view( RPNView& view, RPNView::Iterator& it, T /* val */ )
-        {
-            assert( it != view.end() );
-            // ASSERT_EQ( std::get< T >( *(it) ), val );
-        }
+        void add_var( varid_t id )     { expr.apply( var_t( op::var_i32, id ) ); }
+        void add_const( uint64_t val ) { expr.apply( const_t( op::const_i64, val ) ); }
 
         TEST( variable )
         {
-            Variable v = add_var( 1 );
-            RPNView view( rpn );
-            auto it = view.begin();
-            check_view< RPNView::Variable >( view, it, v );
-            assert( ++it == view.end() );
+            add_var( 1 );
+            ASSERT_EQ( expr.begin()->varid(), 1 );
+            ASSERT( ++expr.begin() == expr.end() );
         }
 
         TEST( constant )
         {
-            Constant c = add_con( 4 );
-            RPNView view( rpn );
-            auto it = view.begin();
-            check_view< RPNView::Constant >( view, it, c );
-            assert( ++it == view.end() );
+            add_const( 4 );
+            ASSERT_EQ( expr.begin()->value(), 4 );
+            ASSERT( ++expr.begin() == expr.end() );
         }
 
 
         TEST( trivial_decomp )
         {
-            Variable v{ { Op::VarI32 }, 1 };   // x
-            append( v );
-            UF uf;
-            decompose( rpn, uf );
-            ASSERT_EQ( v.id, *uf.find( v.id ) );
+            add_var( 1 );
+            decompose();
+            ASSERT_EQ( 1, uf.find( 1 ) );
         }
 
         TEST( x_y )
         {
-            Variable x{ { Op::VarI32 }, 1 };
-            append( x );
-            Constant c{ { Op( -64 ) }, 3 };
-            append( c );
-            append( Op::Eq );
-            UF uf;
-            decompose( rpn, uf );
-            ASSERT_EQ( x.id, *uf.find( x.id ) );
+            add_var( 1 );
+            add_const( 3 );
+            expr.apply( op::eq );
+            decompose();
+
+            ASSERT_EQ( 1, uf.find( 1 ) );
+
             clear();
 
-            Variable y{ { Op::VarI32 }, 2 };
-            append( y );
-            Constant c2{ { Op( -64 ) }, 4 };
-            append( c2 );
-            append( Op::Eq );
-            decompose( rpn, uf );
-            ASSERT_NEQ( x.id, y.id );
-            ASSERT_NEQ( *uf.find( x.id ), *uf.find( y.id ) );
+            add_var( 2 );
+            add_const( 4 );
+            expr.apply( op::eq );
+            decompose();
+
+            ASSERT_EQ( 1, uf.find( 1 ) );
+            ASSERT_EQ( 2, uf.find( 2 ) );
         }
 
         // &&C = constraint
         TEST( x_y_z )
         {
-            UF uf;
+            add_var( 1 );
+            add_var( 2 );
+            add_var( 2 );
+            expr.apply( op::eq );
+            expr.apply( op::bool_and );
 
-            Variable b{ { Op::VarBool }, 1 };
-            append( b );
-            Variable z{ { Op::VarI32 }, 2 };       //  ( z=z ) &&C TRUE
-            append( z );
-            append( z );
-            append( Op::Eq );
-            decompose( rpn, uf );
+            decompose();
             clear();
 
-            Variable x{ { Op::VarI32 }, 3 };       //  &&C ( x=x )
-            append( x );
-            append( x );
-            append( Op::Eq );
-            decompose( rpn, uf );
+            add_var( 3 );
+            add_var( 3 );
+            expr.apply( op::eq );
+            decompose();
             clear();
 
-            Variable y{ { Op::VarI32 }, 4 };
-            append( x );
-            append( y );                       //  &&C ( y=x )
-            append( Op::Eq );
-            decompose( rpn, uf );
+            add_var( 4 );
+            add_var( 3 );
+            expr.apply( op::eq );
+            decompose();
 
-            // expecting partitions {x,y}{z}
-            ASSERT_NEQ( x.id, y.id );
-            ASSERT_EQ( *uf.find( x.id ), *uf.find( y.id ) );
-            ASSERT_NEQ( z.id, x.id );
-            ASSERT_NEQ( z.id, y.id );
-            ASSERT_NEQ( *uf.find( x.id ), *uf.find( z.id ) );
+            // expecting partitions { 3, 4 } { 1, 2 }
+            ASSERT_EQ( uf.find( 3 ), uf.find( 4 ) );
+            ASSERT_EQ( uf.find( 1 ), uf.find( 2 ) );
+            ASSERT_NEQ( uf.find( 3 ), uf.find( 2 ) );
+            ASSERT_NEQ( uf.find( 3 ), uf.find( 1 ) );
         }
 
         TEST( match_variables )
         {
-            UF uf;
-            Variable b{ { Op::VarBool }, 1 };
-            Variable x{ { Op::VarI32 }, 2 };
-            Variable y{ { Op::VarI32 }, 3 };
-            Variable z{ { Op::VarI32 }, 4 };
-            Variable d{ { Op::VarI32 }, 5 };
-            Variable e{ { Op::VarI32 }, 6 };
-            Constant c{ { Op( -64 ) }, 3 };
-
-            append( b );
-            // (x = x)
-            append( x );
-            append( x );
-            append( Op::Eq );
-            decompose( rpn, uf );
+            add_var( 2 );
+            add_var( 2 );
+            expr.apply( op::eq );
+            decompose();
             clear();
 
-            // (z = z)
-            append( z );
-            append( z );
-            append( Op::Eq );
-            decompose( rpn, uf );
+            add_var( 4 );
+            add_var( 4 );
+            expr.apply( op::eq );
+            decompose();
             clear();
 
-            // (x = y)
-            append( x );
-            append( y );
-            append( Op::Eq );
-            decompose( rpn, uf );
+            add_var( 2 );
+            add_var( 3 );
+            expr.apply( op::eq );
+            decompose();
             clear();
 
-            // (z < d)
-            append( z );
-            append( d );
-            append( Op::BvULT );
-            decompose( rpn, uf );
+            add_var( 4 );
+            add_var( 5 );
+            expr.apply( op::bv_ult );
+            decompose();
             clear();
 
-            // (e = 3)
-            append( e );
-            append( c );
-            append( Op::Eq );
+            add_var( 6 );
+            add_const( 3 );
+            expr.apply( op::eq );
+            decompose();
 
-            // expecting partitions {x,y}{z,d}{e}
-            decompose( rpn, uf );
-            ASSERT_EQ( *uf.find( x.id ), *uf.find( y.id ) );
-            ASSERT_EQ( *uf.find( z.id ), *uf.find( d.id ) );
-            ASSERT_EQ( e.id, *uf.find( e.id ) );
+            // expecting partitions { 2, 3 } { 4, 5 } { 6 }
 
-            ASSERT_NEQ( *uf.find( x.id ), *uf.find( z.id ) );
-            ASSERT_NEQ( *uf.find( x.id ), *uf.find( e.id ) );
-            ASSERT_NEQ( *uf.find( z.id ), *uf.find( e.id ) );
+            ASSERT_EQ( uf.find( 2 ), uf.find( 3 ) );
+            ASSERT_EQ( uf.find( 4 ), uf.find( 5 ) );
+            ASSERT_EQ( 6, uf.find( 6 ) );
+
+            ASSERT_NEQ( uf.find( 2 ), uf.find( 4 ) );
+            ASSERT_NEQ( uf.find( 2 ), uf.find( 6 ) );
+            ASSERT_NEQ( uf.find( 4 ), uf.find( 6 ) );
         }
     };
 }
