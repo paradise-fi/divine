@@ -125,6 +125,7 @@ auto Eval< Ctx >::gep( int type, int idx, int end ) -> value::Int< 64, true > //
 
     value::Int< 64, true > offset_bytes( subtype.first );
     offset_bytes.defined( offset.defined() );
+    offset_bytes.taints( offset.taints() );
 
     return offset_bytes + offset_sub;
 }
