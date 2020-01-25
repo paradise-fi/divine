@@ -25,20 +25,21 @@ namespace __lava
 {
     // c++ wrapper for scalar domains
 
-    template< typename domain_t, bool _signed = false, bool floating = false >
+    template< typename dom, bool _signed = false, bool floating = false >
     struct scalar
     {
         static_assert( !(floating && !_signed) && "unsigned floats are not permitted" );
 
-        domain_t _value;
+        dom _value;
 
-        scalar( domain_t val ) : _value( val ) {}
-        operator domain_t() { return _value; }
-        operator domain_t() const { return _value; }
+        scalar( dom &&val ) : _value( std::move( val ) ) {}
+        scalar( const dom &val ) : _value( val ) {}
+        operator dom&() { return _value; }
+        operator dom&() const { return _value; }
 
         explicit operator bool()
         {
-            tristate v = domain_t::to_tristate( _value );
+            tristate v = dom::to_tristate( _value );
 
             switch ( v.value )
             {
@@ -46,10 +47,14 @@ namespace __lava
                 case tristate::yes: return true;
                 case tristate::maybe:
                     bool rv = __vm_choose( 2 );
-                    domain_t::assume( *this, *this, rv );
+                    dom::assume( *this, *this, rv );
                     return rv;
             }
         }
+
+        template< typename type > static scalar lift( type val ) { return { dom::lift( val ) }; }
+        template< typename type > static scalar any() { return { dom::template any< type >() }; }
+
 #if 0
         template< template< typename, typename > class operation >
         _LART_INLINE static scalar_t binary_op( scalar_t l, scalar_t r ) noexcept
@@ -77,14 +82,7 @@ namespace __lava
             return static_cast< constant_t * >( _value )->template lower< concrete_t >();
         }
 
-        template< typename concrete_t >
-        _LART_INLINE static scalar_t lift( concrete_t val ) noexcept
-        {
-            return domain_t::lift( val );
-        }
 #endif
-
-        using dom = domain_t;
 
         static constexpr auto bv_div = _signed ? dom::op_sdiv : dom::op_udiv;
         static constexpr auto bv_rem = _signed ? dom::op_srem : dom::op_urem;
