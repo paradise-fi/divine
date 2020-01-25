@@ -293,9 +293,10 @@ namespace lart::abstract
                     push( u );
                 else if ( util::is_one_of< llvm::CallInst, llvm::InvokeInst >( u ) )
                 {
-                    for ( auto &fn : resolve_call( llvm::CallSite( u ) ) ) {
-                        if ( is_abstractable( fn ) ) {
-                            auto name = "lart.abstract.fn_" + fn->getName().str();
+                    for ( auto &fn : resolve_call( llvm::CallSite( u ) ) )
+                        if ( is_abstractable( fn ) )
+                        {
+                            auto name = "__lamp_fn_" + fn->getName().str();
                             auto meta_fn = fn->getParent()->getFunction( name );
                             auto meta = meta::abstract::get( meta_fn );
                             if ( ( meta.has_value() ) )
@@ -304,7 +305,6 @@ namespace lart::abstract
                             if ( !meta::function::ignore_call( fn ) )
                                 propagate_in( fn, llvm::CallSite( u ) );
                         }
-                    }
                 }
                 else if ( auto ret = llvm::dyn_cast< llvm::ReturnInst >( u ) )
                     propagate_out( ret );

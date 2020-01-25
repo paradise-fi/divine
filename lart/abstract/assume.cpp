@@ -19,13 +19,12 @@ DIVINE_UNRELAX_WARNINGS
 #include <lart/abstract/util.h>
 #include <lart/analysis/edge.h>
 
-namespace lart {
-namespace abstract {
+namespace lart::abstract
+{
+    using namespace llvm;
 
-using namespace llvm;
-
-namespace {
-    struct Assumption {
+    struct Assumption
+    {
         Assumption( Value *cond, Constant *val )
             : cond( cond ), val( val )
         {}
@@ -34,24 +33,28 @@ namespace {
         Constant *val;
     };
 
-    void replace_phis_incoming_bbs( BasicBlock *bb, BasicBlock *oldbb, BasicBlock *newbb ) {
-        for ( auto& inst : *bb ) {
-            if ( auto phi = dyn_cast< PHINode >( &inst ) ) {
+    void replace_phis_incoming_bbs( BasicBlock *bb, BasicBlock *oldbb, BasicBlock *newbb )
+    {
+        for ( auto& inst : *bb )
+            if ( auto phi = dyn_cast< PHINode >( &inst ) )
+            {
                 int bbidx = phi->getBasicBlockIndex( oldbb );
                 if ( bbidx >= 0 )
                     phi->setIncomingBlock( bbidx, newbb );
             }
-        }
     }
 
     using BB = llvm::BasicBlock;
     using BBEdge = analysis::BBEdge;
-    struct AssumeEdge : BBEdge {
+
+    struct AssumeEdge : BBEdge
+    {
         AssumeEdge( BB *from, BB *to )
             : BBEdge( from, to )
         {}
 
-        void assume( Assumption ass ) {
+        void assume( Assumption ass )
+        {
             unsigned i = succ_idx( from, to );
             SplitEdge( from, to );
 
@@ -68,25 +71,28 @@ namespace {
             replace_phis_incoming_bbs( to, from, edgebb );
         }
 
-        unsigned succ_idx( BB * from, BB * to ) {
+        unsigned succ_idx( BB * from, BB * to )
+        {
             auto term = from->getTerminator();
-            for ( unsigned i = 0; i < term->getNumSuccessors(); ++i ) {
+
+            for ( unsigned i = 0; i < term->getNumSuccessors(); ++i )
                 if ( term->getSuccessor( i ) == to )
                     return i;
-            }
+
             UNREACHABLE( "BasicBlock 'to' is not a successor of BasicBlock 'from'." );
         }
     };
-}
 
-    void AddAssumes::run( Module & m ) {
+    void AddAssumes::run( Module & m )
+    {
         for ( const auto & ph : operations< Operation::Type::ToBool >( m ) )
             for ( auto * u : ph.inst->users() )
                 if ( auto * br = llvm::dyn_cast< llvm::BranchInst >( u ) )
                     process( br );
     }
 
-    void AddAssumes::process( BranchInst *br ) {
+    void AddAssumes::process( BranchInst *br )
+    {
         auto to_i1 = cast< CallInst >( br->getCondition() );
 
         auto &ctx = br->getContext();
@@ -98,5 +104,4 @@ namespace {
         false_br.assume( { to_i1, ConstantInt::getFalse( ctx ) } );
     }
 
-} /* namespace abstract */
-} /* namespace lart */
+}

@@ -296,7 +296,8 @@ namespace lart::abstract
             .freeze();
     }
 
-    static inline llvm::Value * lower_constant_expr_call( llvm::Value * val ) {
+    static inline llvm::Value * lower_constant_expr_call( llvm::Value * val )
+    {
         auto ce = llvm::dyn_cast< llvm::ConstantExpr >( val );
         if ( !ce )
             return val;
