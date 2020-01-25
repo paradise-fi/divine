@@ -1,5 +1,5 @@
-/* TAGS: min sym c */
-/* VERIFY_OPTS: --lart abstrubs --symbolic */
+/* TAGS: min c */
+/* VERIFY_OPTS: --lart abstrubs --lamp trivial */
 /* EXPECT: --result error --symbol _Exit */
 
 int foo();

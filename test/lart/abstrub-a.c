@@ -1,5 +1,5 @@
-/* TAGS: min sym c */
-/* VERIFY_OPTS: --lart abstrubs --symbolic */
+/* TAGS: min c */
+/* VERIFY_OPTS: --lart abstrubs --lamp trivial */
 
 int foo();
 int baz() { return 0; }
