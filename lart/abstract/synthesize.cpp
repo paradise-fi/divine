@@ -350,7 +350,7 @@ namespace lart::abstract
                 lifted[ fork ] = arg.abstract.value;
 
                 irb.SetInsertPoint( concrete_path );
-                lifted[ concrete_path ] = lift_constant( arg.concrete.value, irb );
+                lifted[ concrete_path ] = lift( arg.concrete.value, irb );
                 irb.CreateBr( join );
 
                 irb.SetInsertPoint( join );
@@ -507,16 +507,6 @@ namespace lart::abstract
             if ( !impl )
                 brq::raise() << "Missing domain function " << name;
             return irb.CreateBitCast( impl, fty->getPointerTo() );
-        }
-
-        template< typename IRB >
-        llvm::CallInst * lift_constant( llvm::Value * con, IRB &irb ) const
-        {
-            auto name = "__lart_lift_constant_" + type_name( con );
-            auto const_lift = module->getFunction( name );
-            ASSERT( const_lift );
-
-            return irb.CreateCall( const_lift, { con } );
         }
 
         Taint taint;
