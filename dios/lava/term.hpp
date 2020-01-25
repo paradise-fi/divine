@@ -74,8 +74,13 @@ namespace __lava
         template< typename T >
         static term lift( T value )
         {
-            constexpr auto op = brq::smt_match_op< brq::smt_op_const, bitwidth_v< T > >;
-            return { brq::smt_atom_t< T >( op, value ) };
+            if constexpr ( std::is_same_v< T, array_ref > )
+                NOT_IMPLEMENTED();
+            else
+            {
+                constexpr auto op = brq::smt_match_op< brq::smt_op_const, bitwidth_v< T > >;
+                return { brq::smt_atom_t< T >( op, value ) };
+            }
         }
 
         static tristate to_tristate( term ) { return { tristate::maybe }; }

@@ -110,6 +110,8 @@ namespace __lava
     using f32 = float;
     using f64 = double;
 
+    struct array_ref { void *base; size_t size; };
+
     template< typename type >
     constexpr int bitwidth_v = std::is_same_v< type, bool > ? 1 : sizeof( type ) * 8;
 
@@ -128,6 +130,7 @@ namespace __lava
         static st lift_f32( f32 v ) { return st::lift( v ); }
         static st lift_f64( f64 v ) { return st::lift( v ); }
 
+        static st lift_arr( void *v, size_t s ) { return st::lift( array_ref{ v, s } ); }
         static st lift_ptr( void *v )
         {
             return st::lift( reinterpret_cast< uintptr_t >( v ) );

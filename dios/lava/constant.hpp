@@ -85,7 +85,9 @@ namespace __lava
             return { type, bitwidth_v< concrete_t >, val };
         }
 
-        static constant lift_any()
+        static constant lift( array_ref ) { NOT_IMPLEMENTED(); }
+
+        template< typename > static constant any()
         {
             // UNREACHABLE( "Constant domain does not provide lift_any operation" );
         }
