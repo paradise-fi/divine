@@ -22,15 +22,17 @@ namespace __dios::rst::abstract
 
         operator bool()
         {
-            switch ( domain_t::to_tristate( *this ) )
-            {
-                case tristate_t::True: return true;
-                case tristate_t::False: return false;
-            }
+            tristate v = domain_t::to_tristate( _value );
 
-            bool rv = __vm_choose( 2 );
-            domain_t::assume( *this, *this, rv );
-            return rv;
+            switch ( v.value )
+            {
+                case tristate::no:  return false;
+                case tristate::yes: return true;
+                case tristate::maybe:
+                    bool rv = __vm_choose( 2 );
+                    domain_t::assume( *this, *this, rv );
+                    return rv;
+            }
         }
 #if 0
         template< template< typename, typename > class operation >
