@@ -410,7 +410,10 @@ namespace lart::abstract
                 ASSERT( fn->hasName() );
 
                 if ( is_abstractable( fn ) )
+                {
                     add_meta( &call, "fn_" + fn->getName().str(), kind( &call ) );
+                    meta::set( &call, meta::tag::operation::faultable );
+                }
                 else
                     add_meta( &call, "", kind( &call ) );
             }
