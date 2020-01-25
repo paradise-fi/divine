@@ -9,9 +9,9 @@
 
 int main() {
     char stra[5] = "aabb";
-    const char * a = __lamp_lift_str( stra );
+    const char * a = __lamp_lift_arr( stra, sizeof( stra ) );
     char strb[7] = "ccc\0bb";
-    const char * b = __lamp_lift_str( strb );
+    const char * b = __lamp_lift_arr( strb, sizeof( strb ) );
     auto cmp = strcmp( a, b );
     assert( cmp == 0 ); /* ERROR */
 }
