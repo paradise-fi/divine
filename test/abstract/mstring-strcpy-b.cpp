@@ -1,7 +1,7 @@
 /* TAGS: mstring min sym */
-/* VERIFY_OPTS: --symbolic -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --lamp symstring -o nofail:malloc */
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -19,9 +19,9 @@ void my_strcpy( char * dest, const char * src ) {
 
 int main() {
     char buff1[7] = "string";
-    const char * src = __mstring_from_string( buff1);
+    const char * src = __lamp_lift_str( buff1);
     char buff2[7] = "";
-    char * dst = __mstring_from_string( buff2 );
+    char * dst = __lamp_lift_str( buff2 );
 
     my_strcpy( dst, src );
 

@@ -1,7 +1,7 @@
 /* TAGS: mstring min sym */
-/* VERIFY_OPTS: --symbolic -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --lamp symstring -o nofail:malloc */
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -9,7 +9,7 @@
 
 int main() {
     char str[8] = "aabbbcc";
-    char * a = __mstring_from_string( str );
+    char * a = __lamp_lift_arr( str, sizeof( str ) );
     a[ 4 ] = '\0';
     assert( strlen( a ) == 4 );
 }

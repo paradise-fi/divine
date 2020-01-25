@@ -1,13 +1,14 @@
 /* TAGS: mstring min sym */
-/* VERIFY_OPTS: --symbolic -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --lamp symstring -o nofail:malloc */
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
 
-int main() {
-    char buff[] = "string";
-    const char * str = __mstring_from_string( buff );
+int main()
+{
+    char buf[] = "string";
+    const char * str = __lamp_lift_str( buf );
 }

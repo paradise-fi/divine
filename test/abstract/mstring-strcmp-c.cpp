@@ -1,7 +1,7 @@
 /* TAGS: mstring sym todo */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --lamp symstring --sequential -o nofail:malloc */
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 #include <cassert>
 #include <cstring>
 #include <cstdlib>

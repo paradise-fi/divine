@@ -1,7 +1,7 @@
 /* TAGS: mstring min sym */
-/* VERIFY_OPTS: --symbolic -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --lamp symstring -o nofail:malloc */
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -9,9 +9,9 @@
 
 int main() {
     char stra[8] = "abc\0abc";
-    const char * a = __mstring_from_string( stra );
+    const char * a = __lamp_lift_str( stra );
     char strb[8] = "abc\0cba";
-    const char * b = __mstring_from_string( strb );
+    const char * b = __lamp_lift_str( strb );
     auto cmp = strcmp( a, b );
     assert( cmp == 0 );
 }

@@ -1,5 +1,5 @@
 /* TAGS: mstring min sym c++ */
-/* VERIFY_OPTS: --symbolic --sequential -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --lamp symstring --sequential -o nofail:malloc */
 /* CC_OPTS: */
 
 // V: v.word CC_OPT: -DWORD

@@ -1,7 +1,7 @@
 /* TAGS: mstring min sym */
-/* VERIFY_OPTS: --symbolic -o nofail:malloc */
+/* VERIFY_OPTS: --symbolic --lamp symstring -o nofail:malloc */
 
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 #include <assert.h>
 #include <stdio.h>
@@ -9,12 +9,12 @@
 
 int main() {
     char buffe[7] = "aaabbb";
-    char * expected = __mstring_from_string( buffe );
+    char * expected = __lamp_lift_str( buffe );
 
     char buffa[7] = "aaa";
-    char * a = __mstring_from_string( buffa );
+    char * a = __lamp_lift_arr( buffa, sizeof( buffa ) );
     char buffb[7] = "bbb";
-    char * b = __mstring_from_string( buffb );
+    char * b = __lamp_lift_arr( buffb, sizeof( buffb ) );
 
     strcat(a, b);
 

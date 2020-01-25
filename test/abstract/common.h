@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cassert>
-#include <rst/domains.h>
+#include <sys/lamp.h>
 
 namespace sym {
 
