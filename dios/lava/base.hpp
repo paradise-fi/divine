@@ -166,7 +166,7 @@ namespace __lava
         static st op_xor ( sr, sr ) { return fail(); }
 
         static st op_eq ( sr, sr ) { return fail(); }
-        static st op_neq( sr, sr ) { return fail(); }
+        static st op_ne ( sr, sr ) { return fail(); }
         static st op_ugt( sr, sr ) { return fail(); }
         static st op_uge( sr, sr ) { return fail(); }
         static st op_ult( sr, sr ) { return fail(); }
