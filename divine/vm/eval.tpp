@@ -292,7 +292,7 @@ void Eval< Ctx >::dispatch() /* evaluate a single instruction */
         {
             auto a = v.get( 1 ), b = v.get( 2 );
             result( cmp( a, b ) );
-            check( a, b );
+            /* FIXME temporarily disabled because it faults way too often in dios: check( a, b ); */
         };
         op< IntegerComparable >( 1, impl );
     };
