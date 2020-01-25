@@ -87,15 +87,29 @@ namespace __lava
         static constexpr auto bv_div = _signed ? dom::op_sdiv : dom::op_udiv;
         static constexpr auto bv_rem = _signed ? dom::op_srem : dom::op_urem;
 
+        static constexpr auto ge = _signed ? dom::op_sge : dom::op_uge;
+        static constexpr auto le = _signed ? dom::op_sle : dom::op_ule;
+        static constexpr auto lt = _signed ? dom::op_slt : dom::op_ult;
+        static constexpr auto gt = _signed ? dom::op_sgt : dom::op_ugt;
+
         static constexpr auto add = floating ? dom::op_fadd : dom::op_add;
         static constexpr auto sub = floating ? dom::op_fsub : dom::op_sub;
         static constexpr auto div = floating ? dom::op_fdiv : bv_div;
         static constexpr auto rem = floating ? dom::op_frem : bv_rem;
 
-        scalar operator+( scalar o ) const noexcept { return add( *this, o ); }
-        scalar operator-( scalar o ) const noexcept { return sub( *this, o ); }
-        scalar operator/( scalar o ) const noexcept { return div( *this, o ); }
-        scalar operator%( scalar o ) const noexcept { return rem( *this, o ); }
+        scalar operator+( scalar o ) const noexcept { return add( _value, o._value ); }
+        scalar operator-( scalar o ) const noexcept { return sub( _value, o._value ); }
+        scalar operator/( scalar o ) const noexcept { return div( _value, o._value ); }
+        scalar operator%( scalar o ) const noexcept { return rem( _value, o._value ); }
+
+        scalar operator==( scalar o ) const noexcept { return dom::op_eq( _value, o._value ); }
+        scalar operator!=( scalar o ) const noexcept { return dom::op_ne( _value, o._value ); }
+        scalar operator>=( scalar o ) const noexcept { return ge( _value, o._value ); }
+        scalar operator<=( scalar o ) const noexcept { return le( _value, o._value ); }
+        scalar operator< ( scalar o ) const noexcept { return lt( _value, o._value ); }
+        scalar operator> ( scalar o ) const noexcept { return gt( _value, o._value ); }
+
+        scalar zfit( int w ) const { return dom::op_zfit( _value, w );; }
 #if 0
         template< template< typename > class operation >
         inline static constexpr bool is_in_domain = is_detected_v< operation, domain_t >;
