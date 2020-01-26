@@ -39,11 +39,16 @@ namespace __lava
 
         static unit op_thaw( unit, uint8_t ) { return {}; }
         static unit op_load( unit, uint8_t ) { return {}; }
-        static unit op_store( unit, unit, uint8_t ) { return {}; }
+
+        template< typename scalar >
+        static unit op_store( unit, scalar, uint8_t ) { return {}; }
 
         static unit op_insertvalue( unit, unit, uint64_t ) { return {}; }
         static unit op_extractvalue( unit, uint64_t ) { return {}; }
-        static unit op_gep( unit, unit, uint64_t ) { return {}; }
+
+        template< typename index >
+        static unit op_gep( unit, index, uint64_t ) { return {}; }
+
         static unit assume( unit, unit, bool ) { return {}; }
 
         static tristate to_tristate( unit ) { return { tristate::maybe }; }
