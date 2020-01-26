@@ -223,10 +223,11 @@ namespace __lamp
         };
 
         template< typename val_t >
-        static self lift( const val_t &val ) { return sl::lift_dom::lift( val ); }
+        static self lift( const val_t &val ) { return sl::scalar_lift_dom::lift( val ); }
+        static self lift( __lava::array_ref arr ) { return sl::array_lift_dom::lift( arr ); }
 
         template< typename val_t >
-        static self any() { return sl::any_dom::template any< val_t >(); }
+        static self any() { return sl::scalar_any_dom::template any< val_t >(); }
 
         static self assume( sref a, sref b, bool c ) { return op( wrap( _assume, c ), a, b ); }
         static tristate to_tristate( sref a ) { return op( run( _tristate ), a ); }

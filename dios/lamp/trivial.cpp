@@ -10,8 +10,10 @@ namespace __lamp
     {
         using doms = domain_list< unit, constant >;
 
-        using lift_dom = constant;
-        using any_dom = unit;
+        using scalar_lift_dom = constant;
+        using scalar_any_dom = unit;
+        using array_lift_dom = unit;
+        using array_any_dom = unit;
 
         static constexpr int join( int a, int b ) noexcept
         {
