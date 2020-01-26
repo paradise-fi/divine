@@ -50,26 +50,19 @@ namespace __lamp
         }
 
         template< typename op_t, int idx = 0, typename... args_t >
-        static auto in_domain( int dom, op_t op, const args_t & ... args )
+        static self in_domain( int dom, op_t op, const args_t & ... args )
         {
             if constexpr ( idx < doms::size )
             {
+                constexpr int joined = join( idx, doms::template idx< args_t > ... );
+                static_assert( joined >= 0 );
                 if ( idx == dom )
-                {
-                    constexpr int joined = join( idx, doms::template idx< args_t > ... );
-                    static_assert( joined >= 0 );
-                    static_assert( ( ( doms::template idx< args_t > >= 0 ) && ... ) );
-
                     if constexpr ( joined == idx )
                         return op( lift_to< typename doms::template type< idx > >( args ) ... );
-                    else
-                        __builtin_trap();
-                }
-                else
-                    return in_domain< op_t, idx + 1 >( dom, op, args... );
+
+                return in_domain< op_t, idx + 1 >( dom, op, args... );
             }
-            else
-                return in_domain< op_t, 0 >( ( __builtin_trap(), dom ), op, args... );
+            else __builtin_unreachable();
         }
 
         template< typename op_t, int idx = 0 >
