@@ -72,6 +72,12 @@ namespace __lava
         base       &raw()       { return *this; }
         const base &raw() const { return *this; }
 
+        void *unsafe_ptr() const
+        {
+            auto ptr = static_cast< const void * >( &*base::begin() );
+            return const_cast< void * >( ptr );
+        }
+
         void push_back( uint8_t v )          { move_tag( [&]{ base::back() = v; _grow(); } ); }
         void emplace_back( uint8_t v )       { move_tag( [&]{ base::back() = v; _grow(); } ); }
         void resize( int sz )                { move_tag( [&]{ base::resize( sz + 1 ); } ); }
