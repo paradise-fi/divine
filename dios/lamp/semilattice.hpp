@@ -166,6 +166,7 @@ namespace __lamp
         static constexpr auto srem = []( auto a ) { return decltype( a )::op_srem; };
         static constexpr auto urem = []( auto a ) { return decltype( a )::op_urem; };
 
+        static constexpr auto zfit  = []( auto a ) { return decltype( a )::op_zfit; };
         static constexpr auto zext  = []( auto a ) { return decltype( a )::op_zext; };
         static constexpr auto sext  = []( auto a ) { return decltype( a )::op_sext; };
         static constexpr auto trunc = []( auto a ) { return decltype( a )::op_trunc; };
@@ -249,6 +250,7 @@ namespace __lamp
         static self op_srem( sref a, sref b ) { return op( wrap( srem ), a, b ); }
         static self op_urem( sref a, sref b ) { return op( wrap( urem ), a, b ); }
 
+        static self op_zfit ( sref a, bw b ) { return op( wrap( zfit,  b ), a ); }
         static self op_zext ( sref a, bw b ) { return op( wrap( zext,  b ), a ); }
         static self op_sext ( sref a, bw b ) { return op( wrap( sext,  b ), a ); }
         static self op_trunc( sref a, bw b ) { return op( wrap( trunc, b ), a ); }
