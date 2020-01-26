@@ -7,26 +7,27 @@
 #include <stdio.h>
 #include <string.h>
 
-int main() {
-    char buffa[16] = {};
+int main()
+{
+    char buffa[8] = {};
     char * a = __lamp_lift_arr( buffa, sizeof( buffa ) );
-    char buffb[16] = {};
+    char buffb[8] = {};
     char * b = __lamp_lift_arr( buffb, sizeof( buffa ) );
-    char buffc[31] = {};
+    char buffc[15] = {};
     char * c = __lamp_lift_arr( buffc, sizeof( buffa ) );
 
-    char buff1[16] = "0123456789abcde";
+    char buff1[8] = "0123456";
     char * src1 = __lamp_lift_arr( buff1, sizeof( buff1 ) );
     strcpy( a, src1 );
 
-    char buff2[16] = "0123456789abcde";
+    char buff2[8] = "0123456";
     char * src2 = __lamp_lift_arr( buff2, sizeof( buff2 ) );
     strcpy( b, src2 );
 
     strcpy( c, a );
     strcat( c, b );
 
-    char expected[31] = "0123456789abcde0123456789abcde";
+    char expected[15] = "01234560123456";
     char * exp = __lamp_lift_arr( expected, sizeof( expected ) );
 
     assert( strcmp( c, exp ) == 0 );
