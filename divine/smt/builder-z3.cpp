@@ -32,7 +32,7 @@ z3::expr Z3::constant( bool v )
 
 z3::expr Z3::constant( uint64_t value, int bw )
 {
-    return _ctx.bv_val( bw, value );
+    return _ctx.bv_val( value, bw );
 }
 
 z3::expr Z3::variable( int id, int bw )
