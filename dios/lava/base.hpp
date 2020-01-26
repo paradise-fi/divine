@@ -136,6 +136,9 @@ namespace __lava
         using sr = const self_t &;
         using bw = bitwidth_t;
 
+        using index_dom = self_t;
+        using scalar_dom = self_t;
+
         static st lift_i1( i1 v )   { return st::lift( v ); }
         static st lift_i8( i8 v )   { return st::lift( v ); }
         static st lift_i16( i16 v ) { return st::lift( v ); }
