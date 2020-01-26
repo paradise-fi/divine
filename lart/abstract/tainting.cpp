@@ -288,7 +288,7 @@ namespace lart::abstract {
             auto s = llvm::cast< llvm::StoreInst >( concrete( i ) );
             auto val = s->getValueOperand();
             auto ptr = s->getPointerOperand();
-            return { val, abstract( val ), ptr, abstract( ptr ) };
+            return { ptr, abstract( ptr ), val, abstract( val ) };
         }
 
         template< Type T_ = T >
