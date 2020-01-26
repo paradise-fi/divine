@@ -160,6 +160,9 @@ namespace __lava
             // return st::any();
         }
 
+        static st op_not ( sr ) { return fail(); }
+        static st op_neg ( sr ) { return fail(); }
+
         static st op_add ( sr, sr ) { return fail(); }
         static st op_sub ( sr, sr ) { return fail(); }
         static st op_mul ( sr, sr ) { return fail(); }
