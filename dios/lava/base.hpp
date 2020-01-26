@@ -228,5 +228,14 @@ namespace __lava
         template< typename idx > static st op_gep( sr, idx, uint64_t ) { return fail(); }
         template< typename scal > static st op_store( sr, scal, bw ) { return fail(); }
         static st op_load( sr, bw ) { return fail(); }
+
+        static st fn_strcmp( sr, sr ) { return fail(); }
+        static st fn_strcat( sr, sr ) { return fail(); }
+        static st fn_strcpy( sr, sr ) { return fail(); }
+        static st fn_strlen( sr ) { return fail(); }
+
+        template< typename chr >
+        static st fn_strchr( sr, chr ) { return fail(); }
+
     };
 }
