@@ -111,6 +111,10 @@ namespace __lava
         scalar operator< ( sref o ) const { return lt( _value, o._value ); }
         scalar operator> ( sref o ) const { return gt( _value, o._value ); }
 
+        scalar operator!() const { return dom::op_not( _value ); }
+        scalar operator&&( sref o ) const { return dom::op_and( !!*this, !!o ); }
+        scalar operator||( sref o ) const { return dom::op_or ( !!*this, !!o ); }
+
         scalar zfit( int w ) const { return dom::op_zfit( _value, w );; }
 #if 0
         template< template< typename > class operation >
