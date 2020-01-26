@@ -551,22 +551,22 @@ namespace __lava
             while ( lseg != lin.terminal() && rseg != rin.terminal() )
             {
                 if ( lseg.value() != rseg.value() )
-                    return lseg.value() - rseg.value();
+                    return ( lseg.value() - rseg.value() ).zfit( 32 );
                 else
                 {
                     index_t left = lseg.to() - lhs.offset();
                     index_t right = rseg.to() - rhs.offset();
                     if ( left > right )
-                        return lseg.value() - rin.next_segment( rseg ).value();
+                        return ( lseg.value() - rin.next_segment( rseg ).value() ).zfit( 32 );
                     else if ( left < right )
-                        return lin.next_segment( lseg ).value() - rseg.value();
+                        return ( lin.next_segment( lseg ).value() - rseg.value() ).zfit( 32 );
                 }
 
                 lseg = lin.next_segment( lseg );
                 rseg = rin.next_segment( rseg );
             }
 
-            return lseg.value() - rseg.value();
+            return ( lseg.value() - rseg.value() ).zfit( 32 );
         }
 
         _LART_INLINE
