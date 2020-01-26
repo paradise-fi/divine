@@ -94,7 +94,7 @@ namespace __lava
         }
 
         template< bool _signed, int bw >
-        static number< _signed, bw > cast( constant c )
+        static number< _signed, bw > cast( const constant &c )
         {
             return c->value;
         }
@@ -105,7 +105,7 @@ namespace __lava
             bitwidth_t bw = std::max( { vals->bw ... } );
             assert( ( ( bw == vals->bw ) && ... ) );
             const auto t_bv = constant_data::bv;
-            auto f = [&]( auto... x ) -> uint64_t { return f_( x... ); };
+            auto f = [&]( const auto & ... x ) -> uint64_t { return f_( x... ); };
 
             if ( ( ( vals->type == constant_data::bv ) && ... ) )
                 switch ( bw )
@@ -128,7 +128,7 @@ namespace __lava
             return bw ? ( ( 1ull << ( bw - 1 ) ) | mask( bw - 1 ) ) : 0;
         }
 
-        static constant set_bw( constant c, bitwidth_t bw )
+        static constant set_bw( const constant &c, bitwidth_t bw )
         {
             auto rv = c;
             rv->bw = bw;
