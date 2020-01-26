@@ -205,6 +205,14 @@ namespace __lava
 
         static term op_concat ( tt a, tt b ) { return { a, b, op::bv_concat }; }
 
+        template< typename index >
+        static term op_gep( tt a, const index &b, uint64_t w )
+        {
+            if constexpr ( std::is_same_v< index, term > )
+                if ( w == 8 )
+                    return { a, b, op::bv_add };
+            __builtin_trap();
+        }
         // op_inttoptr
         // op_ptrtoint
     };
