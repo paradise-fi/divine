@@ -19,7 +19,7 @@
 
 #pragma once
 
-#include <brick-nusmt>
+#include <brick-smt>
 #include <divine/vm/pointer.hpp>
 
 #include <list>
