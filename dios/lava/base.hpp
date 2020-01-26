@@ -240,8 +240,7 @@ namespace __lava
         static st fn_strcpy( sr, sr ) { return fail(); }
         static st fn_strlen( sr ) { return fail(); }
 
-        template< typename chr >
-        static st fn_strchr( sr, chr ) { return fail(); }
-
+        template< typename chr > static st fn_strchr( sr, chr ) { return fail(); }
+        template< typename idx > static st fn_memcpy( sr, sr, idx ) { return fail(); }
     };
 }
