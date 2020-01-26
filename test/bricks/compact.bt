@@ -1,4 +1,5 @@
 common tags: c++
+          | t_brq::dense_map::basic
           | t_brq::array_map<brq::std_sort>::simple
           | t_brq::array_map<brq::std_sort>::out_of_range
           | t_brq::array_map<brq::std_sort>::comparison
