@@ -436,19 +436,19 @@ namespace __lava
             range_t< values_iterator > values;
         };
 
-        segments_range range( segment_t f, segment_t t )
+        segments_range range( segment_t f, segment_t t ) const
         {
             return { { f.begin(), std::next( t.begin() ) }, { f._value, std::next( t._value ) } };
         }
 
-        segments_range range( index_t from, index_t to )
+        segments_range range( index_t from, index_t to ) const
         {
             auto f = segment_at_index( from );
             auto t = segment_at_index( to );
             return range( f, t );
         }
 
-        segments_range interest()
+        segments_range interest() const
         {
             return range( segment_at_current_offset(), terminal_segment() );
         }
@@ -608,14 +608,17 @@ namespace __lava
             if ( static_cast< bool >( size == index_t::lift( uint64_t( 0 ) ) ) )
                 return dst;
 
-            auto dseg = dst->segment_at_current_offset();
-            auto sseg = src->segment_at_current_offset();
+            auto dseg = dst.segment_at_current_offset();
+            auto sseg = src.segment_at_current_offset();
+
+            const auto *dseg_begin = dseg.begin();
+            const auto *dseg_end = &dseg.value();
 
             bounds_t bounds;
             values_t values;
 
-            std::copy( dst.bounds().begin(), dseg.begin(), std::back_inserter( bounds ) );
-            std::copy( dst.values().begin(), &dseg.value(), std::back_inserter( values ) );
+            std::copy( dst.bounds().begin(), dseg_begin, std::back_inserter( bounds ) );
+            std::copy( dst.values().begin(), dseg_end, std::back_inserter( values ) );
 
             if ( static_cast< bool >( dseg.from() == dst.offset() ) )
                 bounds.push_back( dseg.from() );
@@ -652,8 +655,11 @@ namespace __lava
                     values.pop_back();
                 }
 
-                std::copy( std::next( dseg.begin() ), dst.bounds().end(), std::back_inserter( bounds ) );
-                std::copy( &dseg.value(), dst.values().end(), std::back_inserter( values ) );
+                const auto *dseg_begin = dseg.begin();
+                const auto *dseg_end = &dseg.value();
+
+                std::copy( std::next( dseg_begin ), dst.bounds().end(), std::back_inserter( bounds ) );
+                std::copy( dseg_end, dst.values().end(), std::back_inserter( values ) );
             }
 
             dst.data()->bounds = bounds;
@@ -674,7 +680,7 @@ namespace __lava
         }
 
         // returns first nonepmty segment containing '\0' after offset
-        segment_t terminal_segment()
+        segment_t terminal_segment() const
         {
             auto seg = segment_at_current_offset();
             while ( !is_beyond_last_segment( seg ) && !seg.has_value( '\0' ) ) {
@@ -685,7 +691,7 @@ namespace __lava
             return seg;
         }
 
-        index_t terminator()
+        const index_t &terminator() const
         {
             // begining of the segment of the first occurence of '\0' after offset
             return terminal_segment().from();
@@ -709,7 +715,7 @@ namespace __lava
             return seg.begin() == std::prev( bounds().end() );
         }
 
-        segment_t segment_at_index( index_t idx )
+        segment_t segment_at_index( index_t idx ) const
         {
             if ( static_cast< bool >( idx >= size() ) )
                 out_of_bounds_fault();
@@ -727,7 +733,7 @@ namespace __lava
             UNREACHABLE( "MSTRING ERROR: index out of bounds" );
         }
 
-        segment_t segment_at_current_offset()
+        segment_t segment_at_current_offset() const
         {
             return segment_at_index( _offset );
         }
