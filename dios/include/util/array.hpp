@@ -14,6 +14,8 @@
 
 namespace __dios {
 
+struct construct_shared_t {};
+
 template < typename T, int PT = _VM_PT_Heap >
 struct Array : brq::derive_ord, brq::derive_eq
 {
@@ -31,7 +33,6 @@ struct Array : brq::derive_ord, brq::derive_eq
      * memory. Objects constructed in this manner must never be destroyed but
      * must be disowned instead. */
 
-    struct construct_shared_t {};
     static constexpr construct_shared_t construct_shared;
 
     static constexpr bool nothrow_dtor = std::is_nothrow_destructible_v< T >;
@@ -42,7 +43,8 @@ struct Array : brq::derive_ord, brq::derive_eq
     Array() noexcept = default;
     ~Array() noexcept( nothrow_dtor ) { clear(); }
 
-    Array( const Array &other, construct_shared_t ) noexcept
+    template< int PTI >
+    Array( const Array< T, PTI > &other, construct_shared_t ) noexcept
         : _data( other._data )
     {}
 
