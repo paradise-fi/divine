@@ -17,13 +17,15 @@ namespace __lamp
     template< typename sl >
     struct semilattice : __lava::tagged_array<>, __lava::domain_mixin< semilattice< sl > >
     {
-        using __lava::tagged_array<>::tagged_array;
+        using base = __lava::tagged_array<>;
         using doms = typename sl::doms;
         using self = semilattice;
         using sref = const self &;
 
-        template< typename dom_t >
-        semilattice( const dom_t &v ) : tagged_array<>( v )
+        semilattice( void *v, __dios::construct_shared_t s ) : base( v, s ) {}
+
+        template< typename dom_t, typename = std::enable_if_t< doms::template idx< dom_t > >= 0 > >
+        semilattice( dom_t &&v ) : base( v.disown(), construct_shared )
         {
             tag() = doms::template idx< dom_t >;
         }
