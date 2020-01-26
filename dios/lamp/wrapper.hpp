@@ -207,4 +207,14 @@ extern "C"
     export ptr __lamp_assume( ptr a, ptr b, bool c ) { return wrap( dom::assume, a, b, c ); }
     export ptr __lamp_extract( ptr a, bw s, bw e ) { return wrap( dom::op_extract, a, s, e ); }
     export bool __lamp_decide( uint8_t tr ) { return bool( __lava::tristate( tr ) ); }
+
+    scalar ptr __lamp_fn_strcmp( ptr a, ptr b ) { return wrap( dom::fn_strcmp, a, b ); }
+    scalar ptr __lamp_fn_strcat( ptr a, ptr b ) { return wrap( dom::fn_strcat, a, b ); }
+    scalar ptr __lamp_fn_strcpy( ptr a, ptr b ) { return wrap( dom::fn_strcpy, a, b ); }
+    scalar ptr __lamp_fn_strlen( ptr a ) { return wrap( dom::fn_strlen, a ); }
+
+    scalar ptr __lamp_fn_strchr( ptr a, ptr b )
+    {
+        return wrap( []( auto... x ) { return dom::fn_strchr( x... ); }, a, b );
+    }
 }
