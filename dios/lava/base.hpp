@@ -219,8 +219,8 @@ namespace __lava
         static st op_concat ( sr, sr ) { return fail(); }
         static st op_extract( sr, bw, bw ) { return fail(); }
 
-        static st op_gep( sr, sr, uint64_t ) { return fail(); }
-        static st op_store( sr, sr, bw ) { return fail(); }
+        template< typename idx > static st op_gep( sr, idx, uint64_t ) { return fail(); }
+        template< typename scal > static st op_store( sr, scal, bw ) { return fail(); }
         static st op_load( sr, bw ) { return fail(); }
     };
 }
