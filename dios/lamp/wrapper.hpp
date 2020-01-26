@@ -33,27 +33,27 @@ using namespace __lava; /* iN */
 struct wrapper
 {
     template< typename op_t >
-    static ptr wrap( op_t op ) { return { op().disown() }; }
+    __inline static ptr wrap( op_t op ) { return { op().disown() }; }
 
     template< typename op_t, typename... args_t >
-    static ptr wrap( op_t op, ptr arg, args_t... args )
+    __inline static ptr wrap( op_t op, ptr arg, args_t... args )
     {
         dom a( arg.ptr, dom::construct_shared );
-        auto rv = wrap( [&]( auto... args ) { return op( a, args... ); }, args... );
+        auto rv = wrap( [&]( const auto & ... args ) __inline { return op( a, args... ); }, args... );
         a.disown();
         return rv;
     }
 
     template< typename op_t, typename arg_t, typename... args_t >
-    static auto wrap( op_t op, const arg_t &arg, args_t... args )
+    __inline static auto wrap( op_t op, const arg_t &arg, args_t... args )
         -> std::enable_if_t< !std::is_same_v< arg_t, dom >, ptr >
     {
-        return wrap( [&] ( auto... args ) { return op( arg, args... ); }, args... );
+        return wrap( [&] ( const auto & ... args ) __inline { return op( arg, args... ); }, args... );
     }
 };
 
 template< typename... args_t >
-static auto wrap( const args_t & ... args ) { return wrapper::wrap( args... ); }
+__inline static auto wrap( const args_t & ... args ) { return wrapper::wrap( args... ); }
 
 static uint32_t tainted = 0;
 
