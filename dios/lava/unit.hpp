@@ -121,6 +121,7 @@ namespace __lava
         static unit op_trunc( unit, bw ) { return {}; }
         static unit op_uitofp( unit, bw ) { return {}; }
         static unit op_zext( unit, bw ) { return {}; }
+        static unit op_zfit( unit, bw ) { return {}; }
 
         /* TODO remove, only here to satisfy the vtable generator */
         static unit lift_one_i1( i1 v )   { return lift( v ); }
