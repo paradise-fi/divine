@@ -1,5 +1,8 @@
 /* TAGS: mstring sym todo */
-/* VERIFY_OPTS: --symbolic --lamp symstring --sequential -o nofail:malloc */
+/* VERIFY_OPTS: --sequential -o nofail:malloc */
+
+// V: con V_OPT: --lamp constring            TAGS: min
+// V: sym V_OPT: --lamp symstring --symbolic TAGS: sym
 
 #include <sys/lamp.h>
 #include <cassert>
