@@ -12,6 +12,6 @@ int main() {
     const char * a = __lamp_lift_arr( stra, sizeof( stra ) );
     char strb[8] = "abc\0cba";
     const char * b = __lamp_lift_arr( strb, sizeof( strb ) );
-    auto cmp = strcmp( a, b );
+    int cmp = strcmp( a, b );
     assert( cmp == 0 );
 }
