@@ -49,7 +49,7 @@ namespace __lava
         using base = brq::smt_expr< tagged_array_adaptor >;
 
         term() = default;
-        term( void *v, typename base::construct_shared_t s ) : base( v, s ) {}
+        term( void *v, __dios::construct_shared_t s ) : base( v, s ) {}
 
         template< typename... args_t >
         term( const args_t & ... args )

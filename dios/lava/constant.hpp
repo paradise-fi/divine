@@ -56,6 +56,7 @@ namespace __lava
     struct constant : constant_storage, domain_mixin< constant >
     {
         constant() = default;
+        constant( void *v, __dios::construct_shared_t s ) : constant_storage( v, s ) {}
         constant( constant_data::type_t t, bitwidth_t bw, uint64_t v )
             : tagged_storage< constant_data >( constant_data{ v, t, bw } )
         {}
