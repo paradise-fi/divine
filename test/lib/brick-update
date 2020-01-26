@@ -13,12 +13,12 @@ while ( <LST> )
 {
     /(.*) [^ ]*brick-(.*)$/;
     my $src = "test/bricks/$2.bt";
-    my $match = `fgrep "| $1\$" $src 2> /dev/null`;
+    my $match = `grep "| $1\$" $src 2> /dev/null`;
     chomp( $match );
 
     if ( $match )
     {
-        $f{$2} .= $match;
+        $f{$2} .= "$match\n";
     }
     else
     {
@@ -28,9 +28,12 @@ while ( <LST> )
 
 for my $k ( keys %f )
 {
-    my $tags = `fgrep '^common tags:' test/bricks/$k.bt 2> /dev/null`;
+    my $comments = `grep '^#' test/bricks/$k.bt`;
+    my $tags = `grep '^common tags:' test/bricks/$k.bt 2> /dev/null`;
+    chomp( $tags );
     $tags .= "c++" unless $tags =~ /c\+\+/;
-    $f{$k} = "common tags: $tags\n" . $f{$k};
+    $tags =~ s,^common tags: *,,s;
+    $f{$k} = $comments . "common tags: $tags\n" . $f{$k};
 }
 
 while ( my ( $k, $v ) = each ( %f ) )
