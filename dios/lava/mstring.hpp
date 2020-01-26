@@ -25,156 +25,126 @@
 
 namespace __lava
 {
-    template< typename Index, typename Char >
-    struct mstring_t : tagged_abstract_domain_t
+    struct base : brq::refcount_base< uint16_t, false /* atomic */ >
     {
-        using index_t = scalar_t< Index >;
-        using character_t = scalar_t< Char >;
+        static void* operator new( size_t s ) { return __vm_obj_make( s, _VM_PT_Heap ); }
+        static void operator delete( void *p ) { return __vm_obj_free( p ); }
+    };
 
-        using values_t = Array< character_t, _VM_PT_Weak >;
+    template< typename index_t, typename char_t >
+    struct mstring_data
+    {
+        using values_t = __dios::Array< char_t, _VM_PT_Weak >;
+        using bounds_t = __dios::Array< index_t, _VM_PT_Weak >;
+
+        struct content_t : base
+        {
+            values_t values;
+            bounds_t bounds;
+            index_t size;
+
+            explicit content_t( index_t sz ) : size( sz ) {}
+        };
+
+        using content_ptr = brq::refcount_ptr< content_t >;
+
+        index_t offset;
+        content_ptr content;
+
+        mstring_data( content_ptr c, index_t off ) : offset( off ), content( c ) {}
+    };
+
+    template< typename index_dom_, typename char_dom >
+    struct mstring : tagged_storage< mstring_data< scalar< index_dom_ >, scalar< char_dom > > >,
+                     domain_mixin< mstring< index_dom_, char_dom > >
+    {
+        using index_dom = index_dom_;
+        using scalar_dom = char_dom;
+
+        using index_t = scalar< index_dom >;
+        using char_t  = scalar< char_dom >;
+        using data_t  = mstring_data< index_t, char_t >;
+        using base    = tagged_storage< data_t >;
+        using mref    = const mstring &;
+
+        using content_ptr = typename data_t::content_ptr;
+        using content_t   = typename data_t::content_t;
+        using values_t    = typename data_t::values_t;
+        using bounds_t    = typename data_t::bounds_t;
+
         using values_iterator = typename values_t::iterator;
-
-        using bounds_t = Array< index_t, _VM_PT_Weak >;
         using bounds_iterator = typename bounds_t::iterator;
 
-        template< _VM_Fault fault_v = _VM_Fault::_VM_F_Assert >
-        static void fault( const char * msg ) noexcept
+        using base::get;
+
+        static void fault( const char * msg, _VM_Fault fault_v = _VM_F_Assert )
         {
             __dios_fault( fault_v, msg );
         }
 
         static void out_of_bounds_fault()
         {
-            fault< _VM_Fault::_VM_F_Memory >( "Access out of bounds." );
+            fault( "Access out of bounds.", _VM_F_Memory );
         }
 
-        struct data_t : brq::refcount_base< uint16_t, false /* atomic */ >
+        auto        data()    const { return get().content; }
+        auto       &content() const { return *data(); }
+        auto       &bounds()        { return content().bounds; }
+        const auto &bounds()  const { return content().bounds; }
+        auto       &values()        { return content().values; }
+        const auto &values()  const { return content().values; }
+
+        const index_t &size()   const { return content().size; }
+        const index_t &offset() const { return get().offset; }
+
+        const index_t &checked_offset() const
         {
-            static void* operator new( size_t s ) noexcept { return __vm_obj_make( s, _VM_PT_Heap ); }
-            static void operator delete( void *p ) noexcept { return __vm_obj_free( p ); }
-
-            values_t values;
-            bounds_t bounds;
-            abstract_value_t size; // index_t
-        };
-
-        index_t size() const noexcept { return _data->size; }
-        auto& bounds() noexcept { return _data->bounds; }
-        const auto& bounds() const noexcept { return _data->bounds; }
-        auto& values() noexcept { return _data->values; }
-        const auto& values() const noexcept { return _data->values; }
-
-        using data_ptr = brq::refcount_ptr< data_t >;
-
-        struct mstring_ptr
-        {
-            mstring_ptr( mstring_t * p ) : ptr( p ) {}
-            mstring_ptr( abstract_value_t a )
-                : mstring_ptr( static_cast< mstring_t * >( a ) ) {}
-
-            mstring_t *operator->() const noexcept { return ptr; }
-            mstring_t &operator*() const noexcept { return *ptr; }
-
-            auto& data() noexcept { return ptr->_data; }
-            index_t size() const noexcept { return ptr->size(); }
-            index_t offset() noexcept { return ptr->_offset; }
-
-            _LART_NOINLINE
-            index_t checked_offset() noexcept
-            {
-                auto off = offset();
-                if ( static_cast< bool >( off >= size() ) )
-                    out_of_bounds_fault();
-                return off;
-            }
-
-            auto& bounds() noexcept { return ptr->bounds(); }
-            const auto& bounds() const noexcept { return ptr->bounds(); }
-            auto& values() noexcept { return ptr->values(); }
-            const auto& values() const noexcept { return ptr->values(); }
-
-            operator abstract_value_t()
-            {
-                return static_cast< abstract_value_t >( ptr );
-            }
-
-            void push_bound( abstract_value_t bound ) noexcept
-            {
-                bounds().push_back( index_t::template zfit< 64 >( bound ) );
-            }
-
-            void push_bound( uint64_t bound ) noexcept
-            {
-                push_bound( static_cast< abstract_value_t >( index_t::lift( bound ) ) );
-            }
-
-            void push_char( abstract_value_t ch ) noexcept
-            {
-                values().push_back( ch );
-            }
-
-            void push_char( char ch ) noexcept
-            {
-                push_char( static_cast< abstract_value_t >( character_t::lift( ch ) ) );
-            }
-
-            index_t terminator() noexcept
-            {
-                return ptr->terminator();
-            }
-
-            _LART_INLINE
-            friend void trace( const mstring_ptr &mstr ) noexcept { trace( *mstr ); }
-
-            mstring_t * ptr;
-        };
-
-        abstract_value_t _offset;
-        data_ptr _data;
-
-        _LART_INLINE
-        static mstring_ptr make_mstring( data_ptr data, abstract_value_t offset ) noexcept
-        {
-            auto ptr = __new< mstring_t, _VM_PT_Weak >();
-            ptr->_offset = offset;
-            ptr->_data = data;
-            return ptr;
+            if ( offset() >= size() )
+                out_of_bounds_fault();
+            return offset();
         }
 
-        _LART_INLINE
-        static mstring_ptr make_mstring( abstract_value_t size ) noexcept
-        {
-            auto data = brq::make_refcount< data_t >();
-            data->size = size;
+        void push_bound( index_t bound ) { bounds().push_back( bound ); }
+        void push_bound( uint64_t b ) { push_bound( index_t::lift( b ) ); }
+        void push_char( char_t ch ) { values().push_back( ch ); }
+        void push_char( char ch ) { push_char( char_t::lift( ch ) ); }
 
-            return make_mstring( data, static_cast< abstract_value_t >( index_t::lift( uint64_t( 0 ) ) ) );
+        mstring( content_ptr content, index_t offset )
+            : base( data_t{ content, offset } )
+        {}
+
+        mstring( index_t size )
+            : mstring( brq::make_refcount< content_t >( size ), index_t::lift( 0ul ) )
+        {}
+
+        mstring( void *v, __dios::construct_shared_t s ) : base( v, s ) {}
+
+        template< typename T >
+        static mstring any()
+        {
+            return { index_t::template any< size_t >() };
         }
 
-        _LART_INLINE
-        static mstring_ptr make_mstring( uint64_t size ) noexcept
+        static mstring assume( mref s, mref, bool ) { return s; }
+        static tristate to_tristate( mref ) { return tristate::yes; }
+
+        template< typename T >
+        static std::enable_if_t< std::is_integral_v< T >, mstring > lift( T t )
         {
-            return make_mstring( static_cast< abstract_value_t >( index_t::lift( size ) ) );
+            return { nullptr, index_t::lift( t ) };
         }
 
-        _LART_INTERFACE
-        static mstring_ptr lift_any( index_t size ) noexcept
-        {
-            return make_mstring( static_cast< abstract_value_t >( size ) );
-        }
+        static mstring lift( float ) { NOT_IMPLEMENTED(); }
+        static mstring lift( const index_dom &idx ) { return { nullptr, index_t( idx ) }; }
 
-        _LART_INTERFACE
-        static mstring_ptr lift_any( uint64_t size ) noexcept
+        static mstring lift( array_ref arr )
         {
-            return make_mstring( size );
-        }
+            auto str = static_cast< char * >( arr.base );
 
-        _LART_INTERFACE
-        static mstring_ptr lift_one( const char * str, uint64_t size ) noexcept
-        {
-            auto mstr = make_mstring( size );
+            mstring mstr( index_t::lift( arr.size ) );
             mstr.push_bound( uint64_t( 0 ) );
 
-            if ( size == 0 )
+            if ( arr.size == 0 )
                 return mstr;
 
             char prev = str[ 0 ];
@@ -190,116 +160,14 @@ namespace __lava
             }
 
             mstr.push_char( prev );
-            mstr.push_bound( size );
+            mstr.push_bound( arr.size );
 
             return mstr;
         }
 
-        _LART_INTERFACE
-        static mstring_ptr lift_one( const char * str ) noexcept
-        {
-            return lift_one( str, (uint64_t)__vm_obj_size( str ) );
-        }
-
-        _LART_INTERFACE
-        static character_t op_load( mstring_ptr array, bitwidth_t bw ) noexcept
-        {
-            if ( bw != 8 )
-                fault( "unexpected store bitwidth" );
-
-            // TODO assert array is mstring
-            return load( array );
-        }
-
-        _LART_INTERFACE
-        static void op_store( abstract_value_t value, abstract_value_t array, bitwidth_t bw ) noexcept
-        {
-            if ( bw != 8 )
-                fault( "unexpected store bitwidth" );
-
-            if ( is_constant( value ) )
-                value = character_t::lift(
-                    constant_t::get_constant( value ).lower< char >()
-                );
-            // TODO assert array is mstring
-            auto str = static_cast< mstring_ptr >( array );
-            str->store( value, str.checked_offset() );
-        }
-
-        _LART_INTERFACE
-        static mstring_ptr op_gep( size_t bw, abstract_value_t array, abstract_value_t idx ) noexcept
-        {
-            if ( bw != 8 )
-                fault( "unexpected gep bitwidth" );
-
-            if ( is_constant( idx ) )
-                idx = index_t::lift(
-                    constant_t::get_constant( idx ).lower< uint64_t >()
-                );
-            // TODO assert array is mstring
-            return gep( array, idx );
-        }
-
-        _LART_INTERFACE
-        static mstring_ptr op_thaw( mstring_ptr str, uint8_t bw ) noexcept
+        static mstring op_thaw( mref str, uint8_t bw )
         {
             return str;
-        }
-
-        _LART_INTERFACE
-        static index_t op_sub( abstract_value_t lhs, abstract_value_t rhs ) noexcept
-        {
-            return sub( lhs, rhs );
-        }
-
-        _LART_INTERFACE _LART_SCALAR _LART_OPTNONE
-        static index_t fn_strlen( mstring_ptr str ) noexcept
-        {
-            return strlen( str );
-        }
-
-        _LART_INTERFACE _LART_SCALAR
-        static character_t fn_strcmp( abstract_value_t lhs, abstract_value_t rhs ) noexcept
-        {
-            return character_t::template zfit< 32 >( strcmp( lhs, rhs ) );
-        }
-
-        _LART_INTERFACE _LART_AGGREGATE
-        static mstring_ptr fn_strcat( abstract_value_t dst, abstract_value_t src ) noexcept
-        {
-            // TODO lift strings
-            return strcat( dst, src );
-        }
-
-        _LART_INTERFACE _LART_AGGREGATE
-        static mstring_ptr fn_strcpy( abstract_value_t dst, abstract_value_t src ) noexcept
-        {
-            // TODO lift strings
-            return strcpy( dst, src );
-        }
-
-        _LART_INTERFACE _LART_AGGREGATE
-        static mstring_ptr fn_strchr( abstract_value_t str, abstract_value_t ch ) noexcept
-        {
-            // TODO lift strings
-            if ( is_constant( ch ) )
-                ch = character_t::lift(
-                    constant_t::get_constant( ch ).lower< char >()
-                );
-            return strchr( str, ch );
-        }
-
-        _LART_INTERFACE _LART_AGGREGATE
-        static mstring_ptr fn_memcpy( abstract_value_t dst
-                                    , abstract_value_t src
-                                    , abstract_value_t size ) noexcept
-        {
-            // TODO lift strings
-            if ( is_constant( size ) )
-                size = index_t::lift(
-                    constant_t::get_constant( size ).lower< size_t >()
-                );
-            return memcpy( dst, src, size );
         }
 
         /* implementation of abstraction interface */
@@ -314,15 +182,15 @@ namespace __lava
             bounds_iterator end() { return std::next( begin(), 2 ); }
             bounds_iterator end() const { return std::next( begin(), 2 ); }
 
-            index_t& from() const noexcept { return *begin(); }
-            index_t& to() const noexcept { return *std::next( begin() ); }
-            character_t& value() const noexcept { return *_value; }
+            index_t &from()  const { return *begin(); }
+            index_t &to()    const { return *std::next( begin() ); }
+            char_t  &value() const { return *_value; }
 
-            void set_char( character_t ch ) noexcept { *_value = ch; }
+            void set_char( char_t ch ) { *_value = ch; }
 
-            character_t& operator*() & { return *_value; }
-            character_t& operator*() && = delete;
-            character_t* operator->() const noexcept { return _value; }
+            char_t &operator*() & { return *_value; }
+            char_t &operator*() && = delete;
+            char_t *operator->() const { return _value; }
 
             friend bool operator==( const segment_t &lhs, const segment_t &rhs )
             {
@@ -375,16 +243,10 @@ namespace __lava
                 return tmp;
             }
 
-            bool empty() const noexcept {
-                return static_cast< bool >( from() == to() );
-            }
+            bool empty() const { return static_cast< bool >( from() == to() ); }
+            bool has_value( char ch ) const { return has_value( char_t::lift( ch ) ); }
 
-            bool has_value( char ch ) const noexcept
-            {
-                return has_value( character_t::lift( ch ) );
-            }
-
-            bool has_value( character_t ch ) const noexcept
+            bool has_value( char_t ch ) const
             {
                 if ( empty() )
                     return false;
@@ -394,13 +256,6 @@ namespace __lava
             bool singleton() const
             {
                 return static_cast< bool >( from() + index_t::lift( uint64_t( 1 ) ) == to() );
-            }
-
-            friend void trace( const segment_t &seg ) noexcept
-            {
-                __dios_trace_f( "seg [%lu, %lu]: %c", seg.from().template lower< size_t >()
-                                                    , seg.to().template lower< size_t >()
-                                                    , seg.value().template lower< char >() );
             }
         };
 
@@ -453,14 +308,15 @@ namespace __lava
             return range( segment_at_current_offset(), terminal_segment() );
         }
 
-        _LART_INTERFACE
-        static character_t load( mstring_ptr array ) noexcept
+        static char_dom op_load( mref array, bitwidth_t bw )
         {
-            return array->segment_at_current_offset().value();
+            if ( bw != 8 )
+                fault( "unexpected load bitwidth" );
+
+            return array.segment_at_current_offset().value();
         }
 
-        _LART_INLINE
-        void store( character_t ch, index_t idx ) noexcept
+        void store( const char_t &ch, const index_t &idx )
         {
             auto one = index_t::lift( uint64_t( 1 ) );
             auto seg = segment_at_index( idx );
@@ -514,32 +370,59 @@ namespace __lava
             }
         }
 
-        _LART_INLINE
-        static mstring_ptr gep( mstring_ptr array, index_t idx ) noexcept
+        template< typename char_in >
+        static mstring op_store( mref array, const char_in &value, bitwidth_t bw )
         {
-            return make_mstring( array.data(), array.offset() + idx );
+            if constexpr ( std::is_same_v< char_in, char_dom > )
+            {
+                if ( bw != 8 )
+                    fault( "unexpected store bitwidth" );
+
+                auto &str = const_cast< mstring & >( array );
+                str.store( char_t( value ).zfit( 8 ), array.checked_offset() );
+                return { nullptr, index_t::lift( 0ul ) };
+            }
+            else
+            {
+                __dios_trace_f( "boom %s", __PRETTY_FUNCTION__ );
+                __builtin_trap();
+            }
         }
 
-        _LART_INLINE
-        static index_t sub( mstring_ptr lhs, mstring_ptr rhs ) noexcept
+        template< typename index_in >
+        static mstring op_gep( mref array, const index_in &idx, size_t elem_size )
         {
-            if ( lhs.data() != rhs.data() )
-                fault( "copairing pointers of different objects" );
+            ASSERT_EQ( elem_size, 8 ); /* FIXME */
+            if constexpr ( std::is_same_v< index_in, index_dom > )
+                return { array.data(), array.offset() + index_t( idx ) };
+            else
+                __builtin_trap();
+        }
+
+        static index_dom op_sub( mref lhs, mref rhs )
+        {
+            if ( &lhs.content() != &rhs.content() )
+                fault( "comparing pointers of different objects" );
             return lhs.offset() - rhs.offset();
         }
 
-        _LART_INLINE
-        static index_t strlen( mstring_ptr str ) noexcept
+        static index_dom op_eq( mref lhs, mref rhs )
         {
-            auto res = ( str.terminator() - str.offset() );
-            return index_t::template zfit< 64 >( res );
+            if ( !lhs.data() || !rhs.data() || ( lhs.data() != rhs.data() ) )
+                return index_t::lift( false );
+            else
+                return lhs.offset() == rhs.offset();
         }
 
-        _LART_INLINE
-        static character_t strcmp( mstring_ptr lhs, mstring_ptr rhs ) noexcept
+        static index_dom fn_strlen( mref str )
         {
-            auto lin = lhs->interest();
-            auto rin = rhs->interest();
+            return ( str.terminator() - str.offset() ).zfit( 64 );
+        }
+
+        static scalar_dom fn_strcmp( mref lhs, mref rhs )
+        {
+            auto lin = lhs.interest();
+            auto rin = rhs.interest();
 
             auto lseg = lin.begin();
             if ( lseg.empty() )
@@ -569,47 +452,49 @@ namespace __lava
             return ( lseg.value() - rseg.value() ).zfit( 32 );
         }
 
-        _LART_INLINE
-        static mstring_ptr strcat( mstring_ptr dst, mstring_ptr src ) noexcept
+        static mstring fn_strcat( mref dst, mref src ) /* TODO optimize */
         {
-            // TODO optimize
             auto off = dst.offset();
             auto size = src.terminator() - src.offset();
-            dst->_offset = dst.terminator();
-            auto ret = memcpy( dst, src, size );
-            ret->_offset = off;
+            const_cast< mstring & >( dst ).get().offset = dst.terminator();
+            auto ret = fn_memcpy( dst, src, size );
+            ret.get().offset = off;
             return ret;
         }
 
-        _LART_INLINE
-        static mstring_ptr strcpy( mstring_ptr dst, mstring_ptr src ) noexcept
+        static mstring fn_strcpy( mref dst, mref src ) /* TODO optimize */
         {
-            // TODO optimize
-            return memcpy( dst, src, strlen( src ) + index_t::lift( size_t( 1 ) ) );
+            return fn_memcpy( dst, src, index_t( fn_strlen( src ) ) + index_t::lift( size_t( 1 ) ) );
         }
 
-        _LART_INLINE
-        static mstring_ptr strchr( mstring_ptr str, character_t ch ) noexcept
+        static mstring fn_strchr( mref str, const char_dom &ch_ )
         {
+            auto ch = char_t( ch_ ).zfit( 8 );
             auto seg = str.segment_at_current_offset();
+            int iter = 0;
 
-            while ( !str->is_beyond_last_segment( seg ) )
+            while ( !str.is_beyond_last_segment( seg ) )
             {
                 if ( seg.has_value( ch ) )
                 {
                     auto off = seg.from();
                     if ( seg.begin() == str.bounds().begin() )
                         return str;
-                    return make_mstring( str.data(), off );
+                    return { str.data(), off };
                 }
                 ++seg;
             }
 
-            return static_cast< mstring_t * >( nullptr );
+            return { nullptr, index_t::lift( 0ul ) };
         }
 
-        _LART_NOINLINE
-        static mstring_ptr memcpy( mstring_ptr dst, mstring_ptr src, index_t size ) noexcept
+        template< typename char_in >
+        static mstring fn_strchr( mref str, const char_in & )
+        {
+            __builtin_trap();
+        }
+
+        static mstring fn_memcpy( mref dst, mref src, index_t size )
         {
             if ( size > dst.size() - dst.offset() )
                 fault( "copying to a smaller string" );
@@ -656,7 +541,7 @@ namespace __lava
 
             if ( dst.size() > dst.offset() + size )
             {
-                auto seg = dst->segment_at_index( dst.offset() + size );
+                auto seg = dst.segment_at_index( dst.offset() + size );
                 if ( dseg.value() == values.back() )
                 {
                     // we will take the value from dst suffix
@@ -671,21 +556,9 @@ namespace __lava
                 std::copy( dseg_end, dst.values().end(), std::back_inserter( values ) );
             }
 
-            dst.data()->bounds = bounds;
-            dst.data()->values = values;
+            dst.content().bounds = std::move( bounds );
+            dst.content().values = std::move( values );
             return dst;
-        }
-
-        _LART_INLINE
-        size_t concrete_offset() const noexcept
-        {
-            return static_cast< index_t >( _offset ).template lower< size_t >();
-        }
-
-        _LART_INLINE
-        size_t concrete_size() const noexcept
-        {
-            return static_cast< index_t >( size() ).template lower< size_t >();
         }
 
         // returns first nonepmty segment containing '\0' after offset
@@ -706,17 +579,6 @@ namespace __lava
             return terminal_segment().from();
         }
 
-        _LART_INLINE
-        friend void trace( mstring_t &mstr ) noexcept
-        {
-           __dios_trace_f( "mstring offset %lu size %lu:", mstr.concrete_offset(), mstr.concrete_size() );
-           auto seg = mstr.segment_at_current_offset();
-           while ( !mstr.is_beyond_last_segment( seg ) ) {
-               trace( seg );
-               ++seg;
-           }
-        }
-
         /* detail */
 
         bool is_beyond_last_segment( const segment_t& seg ) const
@@ -729,22 +591,24 @@ namespace __lava
             if ( idx >= size() )
                 out_of_bounds_fault();
 
-            auto it = bounds().begin();
-            for ( auto it = bounds().begin(); std::next( it ) != bounds().end(); ++it )
+            auto *b_begin = const_cast< index_t * >( bounds().begin() );
+            auto *v_begin = const_cast< char_t * >( values().begin() );
+
+            for ( auto it = b_begin; std::next( it ) != bounds().end(); ++it )
             {
                 if ( idx >= *it && idx < *std::next( it ) )
                 {
-                    auto nth = std::distance( bounds().begin(), it );
-                    return segment_t{ it, std::next( values().begin(), nth ) };
+                    auto nth = std::distance( b_begin, it );
+                    return segment_t{ it, std::next( v_begin, nth ) };
                 }
             }
 
-            UNREACHABLE( "MSTRING ERROR: index out of bounds" );
+            __builtin_trap();
         }
 
         segment_t segment_at_current_offset() const
         {
-            return segment_at_index( _offset );
+            return segment_at_index( offset() );
         }
     };
 
