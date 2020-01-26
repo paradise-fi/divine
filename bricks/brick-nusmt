@@ -349,8 +349,7 @@ namespace brq
         using const_iterator = iterator_t< typename base::const_iterator, const smt_atom >;
         using iterator       = iterator_t< typename base::iterator, smt_atom >;
 
-        template< typename... args_t >
-        smt_expr( args_t && ... args ) : base( std::forward< args_t >( args ) ... ) {}
+        using base::base;
 
         iterator       begin()        { return base::begin(); }
         const_iterator begin()  const { return base::begin(); }
