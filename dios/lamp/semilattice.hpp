@@ -166,8 +166,9 @@ namespace __lamp
         static constexpr auto srem = []( auto a ) { return decltype( a )::op_srem; };
         static constexpr auto urem = []( auto a ) { return decltype( a )::op_urem; };
 
-        static constexpr auto zext = []( auto a ) { return decltype( a )::op_zext; };
-        static constexpr auto sext = []( auto a ) { return decltype( a )::op_sext; };
+        static constexpr auto zext  = []( auto a ) { return decltype( a )::op_zext; };
+        static constexpr auto sext  = []( auto a ) { return decltype( a )::op_sext; };
+        static constexpr auto trunc = []( auto a ) { return decltype( a )::op_trunc; };
 
         static constexpr auto ne   = []( auto a ) { return decltype( a )::op_ne; };
         static constexpr auto eq   = []( auto a ) { return decltype( a )::op_eq; };
@@ -180,7 +181,17 @@ namespace __lamp
         static constexpr auto lshr = []( auto a ) { return decltype( a )::op_lshr; };
         static constexpr auto ashr = []( auto a ) { return decltype( a )::op_ashr; };
 
-        static constexpr auto trunc = []( auto a ) { return decltype( a )::op_trunc; };
+        static constexpr auto load = []( auto a ) { return decltype( a )::op_load; };
+
+        static constexpr auto gep = []( auto a )
+        {
+            return []( const auto & ... x ) { return decltype( a )::op_gep( x... ); };
+        };
+
+        static constexpr auto store = []( auto a )
+        {
+            return []( const auto & ... x ) { return decltype( a )::op_store( x... ); };
+        };
 
         static constexpr auto _assume = []( auto a ) { return decltype( a )::assume; };
         static constexpr auto _tristate = []( auto a ) { return decltype( a )::to_tristate; };
@@ -233,6 +244,18 @@ namespace __lamp
         static self op_shl ( sref a, sref b ) { return op( wrap( shl  ), a, b ); }
         static self op_lshr( sref a, sref b ) { return op( wrap( lshr ), a, b ); }
         static self op_ashr( sref a, sref b ) { return op( wrap( ashr ), a, b ); }
+
+        static self op_gep( sref a, sref b, uint64_t s )
+        {
+            return op( wrap( gep, s ), a, index_w( b ) );
+        }
+
+        static self op_store( sref a, sref b, bw w )
+        {
+            return op( wrap( store, w ), a, scalar_w( b ) );
+        }
+
+        static self op_load( sref a, bw w ) { return op( wrap( load, w ), a ); }
     };
 
 }
