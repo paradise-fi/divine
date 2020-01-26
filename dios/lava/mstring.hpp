@@ -457,14 +457,15 @@ namespace __lava
             auto off = dst.offset();
             auto size = src.terminator() - src.offset();
             const_cast< mstring & >( dst ).get().offset = dst.terminator();
-            auto ret = fn_memcpy( dst, src, size );
+            auto ret = memcpy( dst, src, size );
             ret.get().offset = off;
             return ret;
         }
 
         static mstring fn_strcpy( mref dst, mref src ) /* TODO optimize */
         {
-            return fn_memcpy( dst, src, index_t( fn_strlen( src ) ) + index_t::lift( size_t( 1 ) ) );
+            auto size = index_t( fn_strlen( src ) ) + index_t::lift( size_t( 1 ) );
+            return memcpy( dst, src, size );
         }
 
         static mstring fn_strchr( mref str, const char_dom &ch_ )
@@ -494,8 +495,10 @@ namespace __lava
             __builtin_trap();
         }
 
-        static mstring fn_memcpy( mref dst, mref src, index_t size )
+        static mstring memcpy( mref dst, mref src, const index_dom &size_ )
         {
+            index_t size( size_ );
+
             if ( size > dst.size() - dst.offset() )
                 fault( "copying to a smaller string" );
 
@@ -559,6 +562,15 @@ namespace __lava
             dst.content().bounds = std::move( bounds );
             dst.content().values = std::move( values );
             return dst;
+        }
+
+        template< typename index_in >
+        static mstring fn_memcpy( mref dst, mref src, const index_in &size )
+        {
+            if constexpr ( std::is_same_v< index_in, index_dom > )
+                return memcpy( dst, src, size );
+            else
+                __builtin_trap();
         }
 
         // returns first nonepmty segment containing '\0' after offset
