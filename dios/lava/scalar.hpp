@@ -35,7 +35,7 @@ namespace __lava
         scalar( dom &&val ) : _value( std::move( val ) ) {}
         scalar( const dom &val ) : _value( val ) {}
         operator dom&() { return _value; }
-        operator dom&() const { return _value; }
+        operator const dom&() const { return _value; }
 
         explicit operator bool()
         {
@@ -47,7 +47,7 @@ namespace __lava
                 case tristate::yes: return true;
                 case tristate::maybe:
                     bool rv = __vm_choose( 2 );
-                    dom::assume( *this, *this, rv );
+                    dom::assume( _value, _value, rv );
                     return rv;
             }
         }
