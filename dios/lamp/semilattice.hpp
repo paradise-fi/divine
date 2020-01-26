@@ -206,6 +206,11 @@ namespace __lamp
             return []( const auto & ... x ) { return decltype( a )::fn_strchr( x... ); };
         };
 
+        static constexpr auto memcpy = []( auto a )
+        {
+            return []( const auto & ... x ) { return decltype( a )::fn_memcpy( x... ); };
+        };
+
         static constexpr auto run = []( const auto &op, const auto & ... bind  )
         {
             return [=]( const auto &arg, const auto & ... args )
@@ -274,6 +279,11 @@ namespace __lamp
         static self fn_strcmp( sref a, sref b ) { return op( wrap( strcmp ), a, b ); }
         static self fn_strcat( sref a, sref b ) { return op( wrap( strcat ), a, b ); }
         static self fn_strcpy( sref a, sref b ) { return op( wrap( strcpy ), a, b ); }
+        static self fn_memcpy( sref a, sref b, sref c )
+        {
+            return op( wrap( memcpy ), a, b, index_w( c ) );
+        }
+
         static self fn_strchr( sref a, sref b ) { return op( wrap( strchr ), a, scalar_w( b ) ); }
         static self fn_strlen( sref a ) { return op( wrap( strlen ), a ); }
     };

@@ -225,4 +225,9 @@ extern "C"
     {
         return wrap( []( auto... x ) { return dom::fn_strchr( x... ); }, a, b );
     }
+
+    scalar ptr __lamp_fn_memcpy( ptr a, ptr b, ptr c )
+    {
+        return wrap( []( auto... x ) { return dom::fn_memcpy( x... ); }, a, b, c );
+    }
 }
