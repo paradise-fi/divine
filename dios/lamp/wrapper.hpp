@@ -192,8 +192,16 @@ extern "C"
     export ptr __lamp_fptosi ( ptr a, bw  b ) { return wrap( dom::op_fptosi,  a, b ); }
     export ptr __lamp_fptoui ( ptr a, bw  b ) { return wrap( dom::op_fptoui,  a, b ); }
 
-    export ptr __lamp_gep( ptr a, ptr b, uint64_t s ) { return wrap( dom::op_gep, a, b, s ); }
-    export ptr __lamp_store( ptr a, ptr b, bw w ) { return wrap( dom::op_store, a, b, w ); }
+    export ptr __lamp_gep( ptr a, ptr b, uint64_t s )
+    {
+        return wrap( []( auto... x ) { return dom::op_gep( x ... ); }, a, b, s );
+    }
+
+    export ptr __lamp_store( ptr a, ptr b, bw w )
+    {
+        return wrap( []( auto... x ) { return dom::op_store( x ... ); }, a, b, w );
+    }
+
     export ptr __lamp_load( ptr a, bw w ) { return wrap( dom::op_load, a, w ); }
 
     export uint8_t __lamp_to_tristate( ptr v )
