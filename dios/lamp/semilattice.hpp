@@ -196,6 +196,16 @@ namespace __lamp
         static constexpr auto _assume = []( auto a ) { return decltype( a )::assume; };
         static constexpr auto _tristate = []( auto a ) { return decltype( a )::to_tristate; };
 
+        static constexpr auto strcmp = []( auto a ) { return decltype( a )::fn_strcmp; };
+        static constexpr auto strlen = []( auto a ) { return decltype( a )::fn_strlen; };
+        static constexpr auto strcat = []( auto a ) { return decltype( a )::fn_strcat; };
+        static constexpr auto strcpy = []( auto a ) { return decltype( a )::fn_strcpy; };
+
+        static constexpr auto strchr = []( auto a )
+        {
+            return []( const auto & ... x ) { return decltype( a )::fn_strchr( x... ); };
+        };
+
         static constexpr auto run = []( const auto &op, const auto & ... bind  )
         {
             return [=]( const auto &arg, const auto & ... args )
@@ -256,6 +266,12 @@ namespace __lamp
         }
 
         static self op_load( sref a, bw w ) { return op( wrap( load, w ), a ); }
+
+        static self fn_strcmp( sref a, sref b ) { return op( wrap( strcmp ), a, b ); }
+        static self fn_strcat( sref a, sref b ) { return op( wrap( strcat ), a, b ); }
+        static self fn_strcpy( sref a, sref b ) { return op( wrap( strcpy ), a, b ); }
+        static self fn_strchr( sref a, sref b ) { return op( wrap( strchr ), a, scalar_w( b ) ); }
+        static self fn_strlen( sref a ) { return op( wrap( strlen ), a ); }
     };
 
 }
