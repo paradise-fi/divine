@@ -85,12 +85,25 @@ namespace __lava
     template< typename type >
     struct tagged_storage : tagged_array<>
     {
-        using tagged_array<>::tagged_array;
+        using base = tagged_array<>;
 
-        tagged_storage( const type &v = type() )
+        tagged_storage( void *v, __dios::construct_shared_t s ) : base( v, s ) {}
+
+        template< typename... args_t >
+        tagged_storage( args_t && ... args )
         {
             resize( sizeof( type ) );
-            new ( &**this ) type( v );
+            new ( &**this ) type( std::forward< args_t >( args ) ... );
+        }
+
+        tagged_storage( const tagged_storage &o ) : tagged_storage( o.get() ) {}
+        tagged_storage( tagged_storage &&o ) : tagged_storage( std::move( o.get() ) ) {}
+        tagged_storage &operator=( const tagged_storage &o ) { get() = o.get(); return *this; }
+
+        ~tagged_storage()
+        {
+            if ( begin() )
+                get().~type();
         }
 
         const type &operator*() const { return *reinterpret_cast< const type * >( begin() ); }
