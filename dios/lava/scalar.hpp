@@ -97,17 +97,19 @@ namespace __lava
         static constexpr auto div = floating ? dom::op_fdiv : bv_div;
         static constexpr auto rem = floating ? dom::op_frem : bv_rem;
 
-        scalar operator+( scalar o ) const { return add( _value, o._value ); }
-        scalar operator-( scalar o ) const { return sub( _value, o._value ); }
-        scalar operator/( scalar o ) const { return div( _value, o._value ); }
-        scalar operator%( scalar o ) const { return rem( _value, o._value ); }
+        using sref = const scalar &;
 
-        scalar operator==( scalar o ) const { return dom::op_eq( _value, o._value ); }
-        scalar operator!=( scalar o ) const { return dom::op_ne( _value, o._value ); }
-        scalar operator>=( scalar o ) const { return ge( _value, o._value ); }
-        scalar operator<=( scalar o ) const { return le( _value, o._value ); }
-        scalar operator< ( scalar o ) const { return lt( _value, o._value ); }
-        scalar operator> ( scalar o ) const { return gt( _value, o._value ); }
+        scalar operator+( sref o ) const { return add( _value, o._value ); }
+        scalar operator-( sref o ) const { return sub( _value, o._value ); }
+        scalar operator/( sref o ) const { return div( _value, o._value ); }
+        scalar operator%( sref o ) const { return rem( _value, o._value ); }
+
+        scalar operator==( sref o ) const { return dom::op_eq( _value, o._value ); }
+        scalar operator!=( sref o ) const { return dom::op_ne( _value, o._value ); }
+        scalar operator>=( sref o ) const { return ge( _value, o._value ); }
+        scalar operator<=( sref o ) const { return le( _value, o._value ); }
+        scalar operator< ( sref o ) const { return lt( _value, o._value ); }
+        scalar operator> ( sref o ) const { return gt( _value, o._value ); }
 
         scalar zfit( int w ) const { return dom::op_zfit( _value, w );; }
 #if 0
