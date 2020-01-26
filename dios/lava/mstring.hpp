@@ -497,7 +497,8 @@ namespace __lava
                 values().insert( std::next( &seg.value() ), ch );
             } else {
                 // rewrite segment in the middle (split segment)
-                auto vit = values().insert( &seg.value(), seg.value() );
+                auto seg_v = seg.value();
+                auto vit = values().insert( &seg.value(), seg_v );
                 values().insert( std::next( vit ), ch );
                 auto bit = bounds().insert( std::next( seg.begin() ), idx );
                 bounds().insert( std::next( bit ), idx + one );
