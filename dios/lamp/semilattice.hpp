@@ -119,7 +119,7 @@ namespace __lamp
 
                 if ( v.tag() == idx )
                 {
-                    coerce_t coerce( v.ptr(), v.construct_shared );
+                    coerce_t coerce( v.unsafe_ptr(), v.construct_shared );
                     auto rv = op( coerce );
                     coerce.disown();
                     return rv;
