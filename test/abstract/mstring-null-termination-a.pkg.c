@@ -15,9 +15,9 @@ int main()
     char buffa[8] = {};
     char * a = __lamp_lift_arr( buffa, sizeof( buffa ) );
     char buffb[8] = {};
-    char * b = __lamp_lift_arr( buffb, sizeof( buffa ) );
+    char * b = __lamp_lift_arr( buffb, sizeof( buffb ) );
     char buffc[15] = {};
-    char * c = __lamp_lift_arr( buffc, sizeof( buffa ) );
+    char * c = __lamp_lift_arr( buffc, sizeof( buffc ) );
 
     char buff1[8] = "0123456";
     char * src1 = __lamp_lift_arr( buff1, sizeof( buff1 ) );
