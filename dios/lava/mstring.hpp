@@ -165,11 +165,6 @@ namespace __lava
             return mstr;
         }
 
-        static mstring op_thaw( mref str, uint8_t bw )
-        {
-            return str;
-        }
-
         /* implementation of abstraction interface */
 
         struct segment_t
@@ -413,6 +408,8 @@ namespace __lava
             else
                 return lhs.offset() == rhs.offset();
         }
+
+        static mstring op_zfit( mref str, uint8_t ) { return str; }
 
         static index_dom fn_strlen( mref str )
         {
