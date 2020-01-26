@@ -103,6 +103,7 @@ namespace __lava
         static constant with_type( F f_, const val_t & ... vals )
         {
             bitwidth_t bw = std::max( { vals->bw ... } );
+            assert( ( ( bw == vals->bw ) && ... ) );
             const auto t_bv = constant_data::bv;
             auto f = [&]( auto... x ) -> uint64_t { return f_( x... ); };
 
