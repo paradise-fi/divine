@@ -128,10 +128,7 @@ namespace lart::abstract
 
         bool maybe_aggregate() const
         {
-            tristate r( false );
-            for ( auto a : *this )
-                r = join( r, a.is_aggregate );
-            return r.value != tristate::no;
+            return back().is_aggregate != tristate::no;
         }
 
         bool maybe_pointer() const
