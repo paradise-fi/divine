@@ -185,7 +185,10 @@ struct Array : brq::derive_ord, brq::derive_eq
     {
         _resize( size() + 1 );
         for ( iterator i = end() - 1; i > where; --i )
+        {
             new ( i ) T( std::move( *( i - 1 ) ) );
+            ( i - 1 )->~T();
+        }
         new ( where ) T( val );
         return where;
     }
