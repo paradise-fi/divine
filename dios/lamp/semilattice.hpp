@@ -145,14 +145,13 @@ namespace __lamp
         }
 
         template< typename op_t, typename... args_t >
-        static auto op( op_t o, const args_t & ... args )
+        static self op( op_t operation, const args_t & ... args )
         {
             int dom = join( args.tag() ... );
-            TRACE( "domain join gave", dom );
 
             auto downcasted = [&]( const auto & ... args )
             {
-                return in_domain( dom, o, args... );
+                return in_domain( dom, operation, args... );
             };
 
             return cast( downcasted, args... );
