@@ -37,7 +37,7 @@
 #include <brick-assert>
 #include <brick-string>
 #include <brick-data>
-#include <brick-nusmt>
+#include <brick-smt>
 
 #include <map>
 #include <set>
