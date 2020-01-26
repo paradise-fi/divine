@@ -230,7 +230,10 @@ namespace __lamp
         static self any() { return sl::scalar_any_dom::template any< val_t >(); }
 
         static self assume( sref a, sref b, bool c ) { return op( wrap( _assume, c ), a, b ); }
-        static tristate to_tristate( sref a ) { return op( run( _tristate ), a ); }
+        static tristate to_tristate( sref a )
+        {
+            return cast( [&]( auto v ) { return decltype( v )::to_tristate( v ); }, a );
+        }
 
         static self op_add( sref a, sref b ) { return op( wrap( add ), a, b ); }
         static self op_sub( sref a, sref b ) { return op( wrap( sub ), a, b ); }
