@@ -78,7 +78,7 @@ struct Array : brq::derive_ord, brq::derive_eq
     {
         swap( other );
         return *this;
-    };
+    }
 
     void *disown() { void *rv = begin(); _data = nullptr; return rv; }
 
@@ -106,9 +106,9 @@ struct Array : brq::derive_ord, brq::derive_eq
     const_iterator begin() const noexcept { return _data ?_data->get() : nullptr; }
     const_iterator cbegin() const noexcept { return _data ?_data->get() : nullptr; }
 
-    iterator end() noexcept { return _data ? _data->get() + size() : nullptr; }
-    const_iterator end() const noexcept { return _data ? _data->get() + size() : nullptr; }
-    const_iterator cend() const noexcept { return _data ? _data->get() + size() : nullptr; }
+    __inline iterator end() noexcept { return _data ? _data->get() + size() : nullptr; }
+    __inline const_iterator end() const noexcept { return _data ? _data->get() + size() : nullptr; }
+    __inline const_iterator cend() const noexcept { return _data ? _data->get() + size() : nullptr; }
 
     reverse_iterator rbegin() noexcept { return reverse_iterator( end() ); }
     const_reverse_iterator rbegin() const noexcept { return const_reverse_iterator( end() ); }
@@ -124,9 +124,12 @@ struct Array : brq::derive_ord, brq::derive_eq
     const T& front() const noexcept { return *begin(); }
 
     bool empty() const noexcept { return !_data; }
-    size_type size() const noexcept { return empty() ? 0 : __vm_obj_size( _data ) / sizeof( T ); }
+    __inline size_type size() const noexcept
+    {
+        return empty() ? 0 : __vm_obj_size( _data ) / sizeof( T );
+    }
 
-    void clear() noexcept ( nothrow_dtor )
+    __inline void clear() noexcept ( nothrow_dtor )
     {
         if ( empty() )
             return;
@@ -242,7 +245,7 @@ struct Array : brq::derive_ord, brq::derive_eq
     __local_skipcfl void _clear() noexcept ( nothrow_dtor )
     {
         auto s = size();
-        for ( auto i = begin(); i != end(); ++i )
+        for ( auto i = begin(); i < begin() + s; ++i )
             i->~T();
     }
 
