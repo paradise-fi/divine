@@ -56,7 +56,7 @@ namespace __lava
         auto id = brq::smt_decompose< stack_t >( c, __term_state->uf, update_rpns );
 
         if ( !id )
-            __vm_trace( _VM_T_Assume, c.begin() );
+            __vm_trace( _VM_T_Assume, term( c ).disown() ); /* FIXME leak */
         else  // append to relevant decomp
         {
             append_term( id );
