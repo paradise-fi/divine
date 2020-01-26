@@ -14,6 +14,19 @@ namespace __lamp
         template< int idx > using type = typename domain_list::template type_at< idx >;
     };
 
+    template< typename type, typename tag >
+    struct tagged : type, tag
+    {
+        using type::type;
+        using unwrap = type;
+    };
+
+    struct index_tag {};
+    struct scalar_tag {};
+
+    template< typename dom_t > using index_t  = tagged< dom_t, index_tag >;
+    template< typename dom_t > using scalar_t = tagged< dom_t, scalar_tag >;
+
     template< typename sl >
     struct semilattice : __lava::tagged_array<>, __lava::domain_mixin< semilattice< sl > >
     {
@@ -21,6 +34,9 @@ namespace __lamp
         using doms = typename sl::doms;
         using self = semilattice;
         using sref = const self &;
+
+        template< int idx > using dom_type = typename doms::template type< idx >;
+        template< typename type > static constexpr int dom_idx = doms::template idx< type >;
 
         semilattice( void *v, __dios::construct_shared_t s ) : base( v, s ) {}
 
@@ -30,18 +46,40 @@ namespace __lamp
             tag() = doms::template idx< dom_t >;
         }
 
+        struct index_w  : self { using self::self; index_w( const self &v ) : self( v ) {} };
+        struct scalar_w : self { using self::self; scalar_w( const self &v ) : self( v ) {} };
+
         static constexpr int join( int a ) { return a; }
 
         template< typename... args_t >
         static constexpr int join( int a, int b, args_t... args )
         {
-            return sl::join( a, join( b, args... ) );
+            if ( a >= 0 && b >= 0 )
+                return sl::join( a, join( b, args... ) );
+            else
+                return join( a >= 0 ? a : b, args... );
         }
 
         template< typename to, typename from >
         static auto lift_to( const from &f )
         {
-            if constexpr ( std::is_same_v< from, to > )
+            if constexpr ( std::is_base_of_v< index_tag, from > )
+            {
+                using orig = typename from::unwrap;
+                constexpr int goal = join( dom_idx< orig >, dom_idx< typename to::index_dom > );
+                static_assert( goal >= 0 );
+                return self::lift_to< dom_type< goal >, orig >( f );
+            }
+            else if constexpr ( std::is_base_of_v< scalar_tag, from > )
+            {
+                using orig = typename from::unwrap;
+                constexpr int orig_idx = dom_idx< orig >;
+                ASSERT_EQ( f.tag(), orig_idx );
+                constexpr int goal = join( orig_idx, dom_idx< typename to::scalar_dom > );
+                static_assert( goal >= 0 );
+                return self::lift_to< dom_type< goal >, orig >( f );
+            }
+            else if constexpr ( std::is_same_v< from, to > )
                 return f;
             else if constexpr ( std::is_trivial_v< from > )
                 return f;
@@ -65,19 +103,26 @@ namespace __lamp
             else __builtin_unreachable();
         }
 
-        template< typename op_t, int idx = 0 >
-        static auto cast_one( op_t op, const semilattice &v )
+        template< typename op_t, typename sl_t, int idx = 0 >
+        static auto cast_one( op_t op, const sl_t &v )
         {
             if constexpr ( idx < doms::size )
             {
-                using to_type = const typename doms::template type< idx > &;
-                using via = const tagged_array<> &;
+                constexpr bool is_idx = std::is_same_v< sl_t, index_w >;
+                constexpr bool is_scl = std::is_same_v< sl_t, scalar_w >;
+
+                using to_type = typename doms::template type< idx >;
+                using index_type = index_t< to_type >;
+                using scalar_type = scalar_t< to_type >;
+                using coerce1_t = std::conditional_t< is_idx, index_type, to_type >;
+                using coerce_t = std::conditional_t< is_scl, scalar_type, coerce1_t >;
+
                 if ( v.tag() == idx )
                     return op( static_cast< to_type >( static_cast< via >( v ) ) );
                 else
-                    return cast_one< op_t, idx + 1 >( op, v );
+                    return self::cast_one< op_t, sl_t, idx + 1 >( op, v );
             }
-            return cast_one< op_t, 0 >( ( __builtin_trap(), op ), v );
+            return self::cast_one< op_t, sl_t, 0 >( ( __builtin_trap(), op ), v );
         }
 
         template< typename op_t >
