@@ -61,7 +61,7 @@ namespace __lamp
         }
 
         template< typename to, typename from >
-        static auto lift_to( const from &f )
+        __inline static auto lift_to( const from &f )
         {
             if constexpr ( std::is_base_of_v< index_tag, from > )
             {
@@ -88,7 +88,7 @@ namespace __lamp
         }
 
         template< typename op_t, int idx = 0, typename... args_t >
-        static self in_domain( int dom, op_t op, const args_t & ... args )
+        __inline static self in_domain( int dom, op_t op, const args_t & ... args )
         {
             if constexpr ( idx < doms::size )
             {
@@ -104,7 +104,7 @@ namespace __lamp
         }
 
         template< typename op_t, typename sl_t, int idx = 0 >
-        static auto cast_one( op_t op, const sl_t &v )
+        __inline static auto cast_one( op_t op, const sl_t &v )
         {
             if constexpr ( idx < doms::size )
             {
@@ -131,25 +131,25 @@ namespace __lamp
         }
 
         template< typename op_t >
-        static auto cast( op_t op ) { return op(); }
+        __inline static auto cast( op_t op ) { return op(); }
 
         template< typename op_t, typename arg_t, typename... args_t >
-        static auto cast( op_t op, const arg_t &a, const args_t & ... args )
+        __inline static auto cast( op_t op, const arg_t &a, const args_t & ... args )
         {
-            auto rec = [&]( const auto &c )
+            auto rec = [&]( const auto &c ) __inline
             {
-                return cast( [&]( const auto & ... cs ) { return op( c, cs... ); }, args... );
+                return cast( [&]( const auto & ... cs ) __inline { return op( c, cs... ); }, args... );
             };
 
             return cast_one( rec, a );
         }
 
         template< typename op_t, typename... args_t >
-        static self op( op_t operation, const args_t & ... args )
+        __inline static self op( op_t operation, const args_t & ... args )
         {
             int dom = join( args.tag() ... );
 
-            auto downcasted = [&]( const auto & ... args )
+            auto downcasted = [&]( const auto & ... args ) __inline
             {
                 return in_domain( dom, operation, args... );
             };
@@ -212,17 +212,17 @@ namespace __lamp
             return []( const auto & ... x ) { return decltype( a )::fn_memcpy( x... ); };
         };
 
-        static constexpr auto run = []( const auto &op, const auto & ... bind  )
+        static constexpr auto run = []( const auto &op, const auto & ... bind  ) __inline
         {
-            return [=]( const auto &arg, const auto & ... args )
+            return [=]( const auto &arg, const auto & ... args ) __inline
             {
                 return op( arg )( arg, args..., bind... );
             };
         };
 
-        static constexpr auto wrap = []( const auto &op, const auto & ... bind  )
+        static constexpr auto wrap = []( const auto &op, const auto & ... bind  ) __inline
         {
-            return [=]( const auto &arg, const auto & ... args )
+            return [=]( const auto &arg, const auto & ... args ) __inline
             {
                 return self( op( arg )( arg, args..., bind... ) );
             };
