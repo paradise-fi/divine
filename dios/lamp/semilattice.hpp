@@ -118,7 +118,12 @@ namespace __lamp
                 using coerce_t = std::conditional_t< is_scl, scalar_type, coerce1_t >;
 
                 if ( v.tag() == idx )
-                    return op( static_cast< to_type >( static_cast< via >( v ) ) );
+                {
+                    coerce_t coerce( v.ptr(), v.construct_shared );
+                    auto rv = op( coerce );
+                    coerce.disown();
+                    return rv;
+                }
                 else
                     return self::cast_one< op_t, sl_t, idx + 1 >( op, v );
             }
