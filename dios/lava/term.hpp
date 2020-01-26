@@ -51,11 +51,17 @@ namespace __lava
         term() = default;
         term( void *v, __dios::construct_shared_t s ) : base( v, s ) {}
 
-        template< typename... args_t >
-        term( const args_t & ... args )
+        template< typename imm_t, typename... args_t >
+        term( const brq::smt_atom_t< imm_t > &o, const args_t & ... args )
             : brq::smt_expr< tagged_array_adaptor >()
         {
-            apply( args... );
+            apply( o, args... );
+        }
+
+        template< typename... args_t >
+        term( const term &o, const args_t & ... args ) : brq::smt_expr< tagged_array_adaptor >()
+        {
+            apply( o, args... );
         }
 
         static int counter()
