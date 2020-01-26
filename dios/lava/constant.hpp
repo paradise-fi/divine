@@ -153,6 +153,9 @@ namespace __lava
         using cv = constant;
         using cr = const constant &;
 
+        static cv op_not ( cr a ) { return wtu( std::logical_not(), a ); }
+        static cv op_neg ( cr a ) { return wtu( std::bit_not(), a ); }
+
         static cv op_add ( cr a, cr b ) { return wtu( std::plus(), a, b ); }
         static cv op_sub ( cr a, cr b ) { return wtu( std::minus(), a, b ); }
         static cv op_mul ( cr a, cr b ) { return wtu( std::multiplies(), a, b ); }

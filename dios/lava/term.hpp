@@ -141,6 +141,9 @@ namespace __lava
             return { t, atom };
         }
 
+        static term op_not( tt a ) { return { a, op::bv_not }; }
+        static term op_neg( tt a ) { return { a, op::bv_neg }; }
+
         static term op_add ( tt a, tt b ) { return { a, b, op::bv_add  }; }
         static term op_sub ( tt a, tt b ) { return { a, b, op::bv_sub  }; }
         static term op_mul ( tt a, tt b ) { return { a, b, op::bv_mul  }; }
