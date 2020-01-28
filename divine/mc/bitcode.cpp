@@ -305,6 +305,7 @@ BCOptions BCOptions::from_report( brick::yaml::Parser &parsed )
     opts.dios_config = "default";
     opts.dios_config = parsed.getOr( { "dios config" }, opts.dios_config );
     opts.lamp_config = parsed.getOr( { "lamp config" }, opts.lamp_config );
+    opts.mcsema = parsed.getOr( { "mcsema" }, opts.mcsema );
 
     auto leakcheck = std::vector< std::string >();
     leakcheck = parsed.getOr( { "leak check", "*" }, leakcheck );
