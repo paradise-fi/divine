@@ -22,6 +22,7 @@
 #include <divine/vm/program.hpp>
 #include <lart/driver.h>
 #include <lart/mcsema/libcindirectcalls.hpp>
+#include <lart/mcsema/lowerreturn.hpp>
 #include <lart/mcsema/segmentmasks.hpp>
 #include <lart/support/util.h>
 
@@ -158,6 +159,7 @@ void BitCode::do_lart()
     // TODO: Unify with lart::Driver once it is rewritten
     if ( _opts.mcsema )
     {
+        lart::mcsema::lower_ret_agg( *_module.get() ).run();
         lart::mcsema::segment_masks().run( *_module.get() );
         lart::mcsema::libc_indirect_calls().run( *_module.get() );
     }
