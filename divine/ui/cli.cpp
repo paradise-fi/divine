@@ -292,6 +292,8 @@ void with_bc::report_options()
         _log->info( "static reduction: 1\n", true );
     if ( !_bc_opts.relaxed.empty() )
         _log->info( "relaxed memory: " + _bc_opts.relaxed + "\n" );
+    if ( _bc_opts.mcsema )
+        _log->info( "mcsema: 1\n", true );
 }
 
 void with_bc::setup()
