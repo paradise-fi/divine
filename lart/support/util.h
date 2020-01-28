@@ -212,6 +212,13 @@ bool is_one_of( llvm::Value *v ) {
     return ( llvm::isa< Ts >( v ) || ... );
 }
 
+// Type is not under Value, therefore we need separate function
+template< typename ... Ts >
+bool is_one_of_types( llvm::Type *t )
+{
+    return ( llvm::isa< Ts >( t ) || ... );
+}
+
 static inline llvm::Function* get_function( llvm::Argument *a ) {
     return a->getParent();
 }
@@ -445,7 +452,7 @@ void replaceGlobalArray( llvm::Module &m, std::string name, std::vector< T > val
             [&]( llvm::Type *t ) { return _detail::buildInit( value, m, t ); } );
 }
 
-}
+} // namespace util
 
 template< typename What >
 bool llvmcase( What * ) { return false; }
@@ -946,5 +953,5 @@ inline void inlineIntoCallers( llvm::Function *fn ) {
     }
 }
 
-}
+} // namespace lart
 #endif // LART_SUPPORT_UTIL_H
