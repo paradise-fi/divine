@@ -1,7 +1,7 @@
 include( stringify )
 #include( template-separe )
 
-foreach( D mem vm ss mc ui cc ltl sim smt dbg )
+foreach( D mem vm ss mc ui cc ltl sim smt dbg ra )
     file( GLOB CPP_${D} ${D}/*.cpp )
     file( GLOB HPP_${D} ${D}/*.hpp )
     install( FILES ${HPP_${D}} DESTINATION include/divine/${D} )
@@ -46,7 +46,7 @@ macro( mklib D )
   install( TARGETS divine-${D} DESTINATION lib )
 endmacro()
 
-foreach( D ltl mc smt vm dbg cc ui )
+foreach( D ltl mc smt vm dbg cc ui ra )
   mklib( ${D} )
 endforeach()
 
@@ -61,7 +61,7 @@ endif()
 
 # target_compile_features( libdivine PUBLIC cxx_relaxed_constexpr )
 
-bricks_unittest( test-divine ${HPP_ss} ${HPP_mem} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} ${HPP_smt} )
+bricks_unittest( test-divine ${HPP_ra} ${HPP_ss} ${HPP_mem} ${HPP_vm} ${HPP_mc} ${HPP_cc} ${HPP_ltl} ${HPP_smt} )
 
 llvm_map_components_to_libnames( CC_TGTS ${LLVM_TARGETS_TO_BUILD} )
 target_link_libraries( divine-cc LLVMCore LLVMSupport LLVMMC LLVMIRReader
@@ -72,14 +72,15 @@ target_link_libraries( divine-smt ${Z3_LIBRARIES} ${STP_LIBRARIES} )
 target_link_libraries( divine-dbg divine-vm )
 target_link_libraries( divine-mc divine-vm divine-dbg divine-smt divine-rt divine-cc # FIXME divine-cc
                                  liblart LLVMBitReader LLVMBitWriter LLVMLinker )
-target_link_libraries( divine-ui divine-rt divine-cc divine-mc divine-ltl )
+target_link_libraries( divine-ui divine-rt divine-cc divine-mc divine-ltl divine-ra )
+target_link_libraries( divine-ra divine-dbg divine-mc liblart )
 
 
 if ( OPT_SQL )
     target_link_libraries( divine-ui nanodbc )
 endif()
 
-target_link_libraries( test-divine divine-cc divine-vm divine-ltl divine-dbg divine-mc )
+target_link_libraries( test-divine divine-cc divine-vm divine-ltl divine-dbg divine-mc divine-ra )
 
 if( WIN32 )
   target_link_libraries( libdivine psapi )
