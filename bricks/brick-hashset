@@ -326,10 +326,16 @@ namespace brq::impl
     template< typename T >
     using default_cell = std::conditional_t< ( sizeof( T ) < 16 ), compact_cell< T >, fast_cell< T > >;
 
+    template< typename T, typename = void > struct is_lock_free : std::false_type {};
+    template< typename T >
+    struct is_lock_free< T, std::enable_if_t< std::is_trivially_copy_constructible_v< T > > >
+    {
+        static constexpr bool value = std::atomic< typename tagged< T >::Type >::is_always_lock_free;
+    };
+
     template< typename T >
     using concurrent_cell =
-        std::conditional_t< std::atomic< typename tagged< T >::Type >::is_always_lock_free,
-                            atomic_cell< T >, locked_cell< T > >;
+        std::conditional_t< is_lock_free< T >::value, atomic_cell< T >, locked_cell< T > >;
 
     template< typename Cell_ >
     struct hash_set_base
