@@ -1,4 +1,4 @@
-/* TAGS: c sym big */
+/* TAGS: c sym big z3skip */
 /* VERIFY_OPTS: --symbolic -o nofail:malloc -o ignore:control */
 extern void __VERIFIER_error() __attribute__ ((__noreturn__));
 
