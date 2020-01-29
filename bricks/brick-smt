@@ -25,25 +25,21 @@
 
 namespace brq
 {
-    enum smt_op_type { smt_op_var, smt_op_const, smt_op_cast, smt_op_resize, smt_op_compare,
-                       smt_op_other };
+    enum smt_op_type { smt_op_other, smt_op_var, smt_op_const, smt_op_cast, smt_op_resize,
+                       smt_op_compare };
 
     struct smt_traits_t
     {
-        int arity;
-        int imm_bytes;
-        int bitwidth;
-        smt_op_type type;
+        const char *name;
+        unsigned arity:4;
+        unsigned imm_bytes:4;
+        int bitwidth:10;
+        smt_op_type type:8;
 
         constexpr bool is_var()    const { return type == smt_op_var; }
         constexpr bool is_const()  const { return type == smt_op_const; }
         constexpr bool is_cast()   const { return type == smt_op_cast; }
         constexpr bool is_resize() const { return type == smt_op_resize; }
-
-        const char *name;
-        constexpr smt_traits_t( const char *n, int ar, int imm = 0, int bw = 0,
-                                smt_op_type t = smt_op_other )
-            : arity( ar ), imm_bytes( imm ), bitwidth( bw ), type( t ), name( n ) {}
     };
 
     enum class smt_op : uint8_t
@@ -74,7 +70,7 @@ namespace brq
 
         switch ( v )
         {
-            case op::invalid:    return { "invalid",  0, 0,  0 };
+            case op::invalid:    return { "invalid",  0, 0,  0, smt_op_other };
 
             case op::eq:         return { "=",  2, 0, 1, smt_op_compare };
             case op::neq:        return { "!=", 2, 0, 1, smt_op_compare };
@@ -95,8 +91,8 @@ namespace brq
             case op::const_f32:  return { "const_f32", 0, 4, 32, smt_op_const };
             case op::const_f64:  return { "const_f64", 0, 8, 64, smt_op_const };
 
-            case op::bv_not:     return { "bvnot", 1, 0, 1 };
-            case op::bv_neg:     return { "bvneg", 1 };
+            case op::bv_not:     return { "bvnot", 1, 0, 1, smt_op_other };
+            case op::bv_neg:     return { "bvneg", 1, 0, 0, smt_op_other };
 
             case op::bv_sext:    return { "sext",     1, 1, 0, smt_op_resize };
             case op::bv_zext:    return { "zext",     1, 1, 0, smt_op_resize };
@@ -110,25 +106,25 @@ namespace brq
             case op::fp_tosbv:   return { "fptosint", 0, 1, 0, smt_op_cast };
             case op::fp_toubv:   return { "fptouint", 0, 1, 0, smt_op_cast };
 
-            case op::bool_and:   return { "and",  2, 0, 1 };
-            case op::bool_or:    return { "or",   2, 0, 1 };
-            case op::bool_xor:   return { "xor",  2, 0, 1 };
-            case op::bool_imply: return { "=>",   2, 0, 1 };
-            case op::bool_not:   return { "not",  1, 0, 1 };
+            case op::bool_and:   return { "and",  2, 0, 1, smt_op_other };
+            case op::bool_or:    return { "or",   2, 0, 1, smt_op_other };
+            case op::bool_xor:   return { "xor",  2, 0, 1, smt_op_other };
+            case op::bool_imply: return { "=>",   2, 0, 1, smt_op_other };
+            case op::bool_not:   return { "not",  1, 0, 1, smt_op_other };
 
-            case op::bv_and:     return { "bvand",  2 };
-            case op::bv_or:      return { "bvor",   2 };
-            case op::bv_xor:     return { "bvxor",  2 };
-            case op::bv_add:     return { "bvadd",  2 };
-            case op::bv_sub:     return { "bvsub",  2 };
-            case op::bv_mul:     return { "bvmul",  2 };
-            case op::bv_udiv:    return { "bvudiv", 2 };
-            case op::bv_sdiv:    return { "bvsdiv", 2 };
-            case op::bv_urem:    return { "bvurem", 2 };
-            case op::bv_srem:    return { "bvsrem", 2 };
-            case op::bv_shl:     return { "bvshl",  2 };
-            case op::bv_lshr:    return { "bvlshr", 2 };
-            case op::bv_ashr:    return { "bvashr", 2 };
+            case op::bv_and:     return { "bvand",  2, 0, 0, smt_op_other };
+            case op::bv_or:      return { "bvor",   2, 0, 0, smt_op_other };
+            case op::bv_xor:     return { "bvxor",  2, 0, 0, smt_op_other };
+            case op::bv_add:     return { "bvadd",  2, 0, 0, smt_op_other };
+            case op::bv_sub:     return { "bvsub",  2, 0, 0, smt_op_other };
+            case op::bv_mul:     return { "bvmul",  2, 0, 0, smt_op_other };
+            case op::bv_udiv:    return { "bvudiv", 2, 0, 0, smt_op_other };
+            case op::bv_sdiv:    return { "bvsdiv", 2, 0, 0, smt_op_other };
+            case op::bv_urem:    return { "bvurem", 2, 0, 0, smt_op_other };
+            case op::bv_srem:    return { "bvsrem", 2, 0, 0, smt_op_other };
+            case op::bv_shl:     return { "bvshl",  2, 0, 0, smt_op_other };
+            case op::bv_lshr:    return { "bvlshr", 2, 0, 0, smt_op_other };
+            case op::bv_ashr:    return { "bvashr", 2, 0, 0, smt_op_other };
 
             case op::bv_ule:     return { "bvule", 2, 0, 1, smt_op_compare };
             case op::bv_ult:     return { "bvult", 2, 0, 1, smt_op_compare };
@@ -139,34 +135,33 @@ namespace brq
             case op::bv_sge:     return { "bvsge", 2, 0, 1, smt_op_compare };
             case op::bv_sgt:     return { "bvsgt", 2, 0, 1, smt_op_compare };
 
-            case op::fp_add:     return { "fp.add", 2 };
-            case op::fp_sub:     return { "fp.sub", 2 };
-            case op::fp_mul:     return { "fp.mul", 2 };
-            case op::fp_div:     return { "fp.div", 2 };
-            case op::fp_rem:     return { "fp.rem", 2 };
+            case op::fp_add:     return { "fp.add", 2, 0, 0, smt_op_other };
+            case op::fp_sub:     return { "fp.sub", 2, 0, 0, smt_op_other };
+            case op::fp_mul:     return { "fp.mul", 2, 0, 0, smt_op_other };
+            case op::fp_div:     return { "fp.div", 2, 0, 0, smt_op_other };
+            case op::fp_rem:     return { "fp.rem", 2, 0, 0, smt_op_other };
 
-            case op::fp_true:    return { "fp.true",  2, 0, 1 };
-            case op::fp_false:   return { "fp.false", 2, 0, 1 };
-            case op::fp_ord:     return { "fp.ord",   2, 0, 1 };
-            case op::fp_uno:     return { "fp.uno",   2, 0, 1 };
-            case op::fp_oeq:     return { "fp.oeq",   2, 0, 1 };
-            case op::fp_ueq:     return { "fp.ueq",   2, 0, 1 };
+            case op::fp_true:    return { "fp.true",  2, 0, 1, smt_op_other };
+            case op::fp_false:   return { "fp.false", 2, 0, 1, smt_op_other };
+            case op::fp_ord:     return { "fp.ord",   2, 0, 1, smt_op_other };
+            case op::fp_uno:     return { "fp.uno",   2, 0, 1, smt_op_other };
+            case op::fp_oeq:     return { "fp.oeq",   2, 0, 1, smt_op_other };
+            case op::fp_ueq:     return { "fp.ueq",   2, 0, 1, smt_op_other };
 
-            case op::fp_ule:     return { "fp.ule",   2, 0, 1 };
-            case op::fp_ult:     return { "fp.ult",   2, 0, 1 };
-            case op::fp_uge:     return { "fp.uge",   2, 0, 1 };
-            case op::fp_ugt:     return { "fp.egt",   2, 0, 1 };
-            case op::fp_ole:     return { "fp.sle",   2, 0, 1 };
-            case op::fp_olt:     return { "fp.slt",   2, 0, 1 };
-            case op::fp_oge:     return { "fp.sge",   2, 0, 1 };
-            case op::fp_ogt:     return { "fp.sgt",   2, 0, 1 };
+            case op::fp_ule:     return { "fp.ule",   2, 0, 1, smt_op_other };
+            case op::fp_ult:     return { "fp.ult",   2, 0, 1, smt_op_other };
+            case op::fp_uge:     return { "fp.uge",   2, 0, 1, smt_op_other };
+            case op::fp_ugt:     return { "fp.egt",   2, 0, 1, smt_op_other };
+            case op::fp_ole:     return { "fp.sle",   2, 0, 1, smt_op_other };
+            case op::fp_olt:     return { "fp.slt",   2, 0, 1, smt_op_other };
+            case op::fp_oge:     return { "fp.sge",   2, 0, 1, smt_op_other };
+            case op::fp_ogt:     return { "fp.sgt",   2, 0, 1, smt_op_other };
 
-            case op::bv_extract: return { "extract", 1, 2 };
-            case op::bv_concat:  return { "concat",  2, 0 };
-            case op::constraint: return { "constraint", 2 };
+            case op::bv_extract: return { "extract", 1, 2, 0, smt_op_other };
+            case op::bv_concat:  return { "concat",  2, 0, 0, smt_op_other };
         }
 
-        return { "invalid",  0, 0,  0 };
+        return { "invalid",  0, 0, 0, smt_op_other };
     }
 
     template< smt_op_type t, int bw, smt_op id = smt_op::invalid >
