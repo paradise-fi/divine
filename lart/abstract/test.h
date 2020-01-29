@@ -46,7 +46,6 @@ namespace lart::t_abstract {
                  , AnnotateFunctions(
                       "lart.interrupt.skipcfl:_ZN6__dios5Array.*"
                  )
-                 , InitAbstractions()
                  , abstract::LowerAnnotations()
                  , DataFlowAnalysis()
                  , UnstashPass()
