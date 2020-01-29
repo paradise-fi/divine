@@ -1,10 +1,11 @@
 find_program( PANDOC pandoc )
 find_program( CONTEXT context )
+find_program( PANDOC_CROSSREF pandoc-crossref )
 
 set( MANUAL_SRC overview.md building.md using.md commands.md llvm.md sim.md divm.md dios.md )
-set( MANUAL_OPT "--filter=pandoc-crossref -MlinkReferences:true -MsecPrefix:Section -N --toc" )
+set( MANUAL_OPT "--filter=${PANDOC_CROSSREF} -MlinkReferences:true -MsecPrefix:Section -N --toc" )
 
-if ( PANDOC )
+if ( PANDOC AND PANDOC_CROSSREF )
   if ( NOT CONTEXT )
     message( WARNING "context not found, skipping pdf generation" )
   endif()
@@ -19,5 +20,7 @@ if ( PANDOC )
   endif()
   add_subdirectory( manual )
   add_subdirectory( website )
+else()
+  message( WARNING "cound not find pandoc or pandoc-crossref, not building documentation" )
 endif()
 
