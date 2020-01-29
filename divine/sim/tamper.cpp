@@ -67,14 +67,13 @@ void prepareDebugMetadata( IRBuilder & irb )
 
 /* Get correct __<domain>_<method>_<type> constructor, such as __sym_val_i64 */
 template< typename DN >
-llvm::Function* getAbstractConstructor( llvm::Module *m, DN & dn,
-                                        const std::string & domain, const std::string & method )
+llvm::Function* getAbstractConstructor( llvm::Module *m, DN & dn, const std::string & method )
 {
     int width = dn.size() * 8;
     if ( width != 32 && width != 64 && width != 8 && width != 16 )
         throw brq::error( "unsupported width: " + std::to_string( width ) );
 
-    std::string && name = "__" + domain + "_" + method + "_i" + std::to_string( width );
+    std::string && name = "__lamp_" + method + "_i" + std::to_string( width );
     auto fn = m->getFunction( name );
     if ( !fn )
         throw brq::error( "function \"" + name + "\" not found." );
@@ -82,22 +81,22 @@ llvm::Function* getAbstractConstructor( llvm::Module *m, DN & dn,
 }
 } /* anonymous namespace */
 
-/* Insert call to __<domain>_val_<type>() */
+/* Insert call to __lamp_any_<type>() */
 template< typename IRBuilder >
-llvm::Value* CLI::mkCallNondet( IRBuilder & irb, DN &dn, const std::string & domain_name,
+llvm::Value* CLI::mkCallNondet( IRBuilder & irb, DN &dn,
                                 const std::string & name )
 {
-    auto aVal = getAbstractConstructor( irb.GetInsertBlock()->getModule(), dn, domain_name, "val" );
+    auto aVal = getAbstractConstructor( irb.GetInsertBlock()->getModule(), dn, "any" );
     prepareDebugMetadata( irb );
     return irb.CreateCall( aVal, llvm::NoneType::None, name + ".abstract" );
 }
 
-/* Insert call to __<domain>_lift_<type>( original_value ) */
+/* Insert call to __lamp_lift_<type>( original_value ) */
 template< typename IRBuilder >
-llvm::Value* CLI::mkCallLift( IRBuilder & irb, DN & dn, const std::string & domain_name,
+llvm::Value* CLI::mkCallLift( IRBuilder & irb, DN & dn,
                               llvm::Value *original_value, const std::string & name )
 {
-    auto aLift = getAbstractConstructor( irb.GetInsertBlock()->getModule(), dn, domain_name, "lift" );
+    auto aLift = getAbstractConstructor( irb.GetInsertBlock()->getModule(), dn, "lift" );
     prepareDebugMetadata( irb );
     llvm::Value * args[1] = { original_value };
     return irb.CreateCall( aLift, args, name + ".lifted" );
@@ -111,13 +110,13 @@ void CLI::tamper( const command::tamper &cmd, DN &dn, llvm::Argument *arg )
     llvm::IRBuilder<> irb( arg->getParent()->getEntryBlock().getFirstNonPHI() );
     if ( cmd.lift )
     {
-        auto aval = mkCallLift( irb, dn, cmd.domain, arg, argname );
+        auto aval = mkCallLift( irb, dn, arg, argname );
         arg->replaceAllUsesWith( aval );
         llvm::cast< llvm::User >( aval )->replaceUsesOfWith( aval, arg );
     }
     else
     {
-        auto aval = mkCallNondet( irb, dn, cmd.domain, argname );
+        auto aval = mkCallNondet( irb, dn, argname );
         arg->replaceAllUsesWith( aval );
     }
 }
@@ -132,7 +131,7 @@ void CLI::tamper( const command::tamper &cmd, DN &dn, llvm::AllocaInst *origin_a
 
     // create nondet value to initialise the variable with
     if ( !cmd.lift )
-        aval = mkCallNondet( irb, dn, cmd.domain, varname );
+        aval = mkCallNondet( irb, dn, varname );
 
     // Find first stores to the alloca and replace them with abstract value
     std::set< llvm::StoreInst* > first_stores = get_first_stores_to_alloca( origin_alloca );
@@ -168,7 +167,7 @@ void CLI::tamper( const command::tamper &cmd, DN &dn, llvm::AllocaInst *origin_a
                     irb.CreateCondBr( a_fresh, bb_lift, bb_lower );
 
                     irb.SetInsertPoint( bb_lift );
-                    auto *lifted = mkCallLift( irb, dn, cmd.domain, stored_orig, varname );
+                    auto *lifted = mkCallLift( irb, dn, stored_orig, varname );
                     irb.CreateStore( irb.getFalse(), a_freshness );
                     irb.CreateBr( bb_lower );
 
@@ -195,7 +194,7 @@ void CLI::tamper( const command::tamper &cmd, DN &dn, llvm::AllocaInst *origin_a
                 // The straightforward case -- no dispatch needed
                 irb.SetInsertPoint( store );
                 if ( cmd.lift )
-                    aval = mkCallLift( irb, dn, cmd.domain, store->getValueOperand(), varname );
+                    aval = mkCallLift( irb, dn, store->getValueOperand(), varname );
                 store->replaceUsesOfWith( store->getValueOperand(), aval );
             }
         }
@@ -213,7 +212,7 @@ void CLI::tamper( const command::tamper &cmd, DN &dn, llvm::DbgValueInst *dvi )
 
     // create nondet value to initialise the variable with
     if ( !cmd.lift )
-        aval = mkCallNondet( irb, dn, cmd.domain, varname );
+        aval = mkCallNondet( irb, dn, varname );
 
     std::set< llvm::DbgValueInst* > first_dvis = get_first_dvis_of_var( dvi );
     for ( auto *dvi : first_dvis )
@@ -221,7 +220,7 @@ void CLI::tamper( const command::tamper &cmd, DN &dn, llvm::DbgValueInst *dvi )
         if ( cmd.lift )
         {
             irb.SetInsertPoint( dvi );
-            aval = mkCallLift( irb, dn, cmd.domain, dvi->getVariableLocation(), varname );
+            aval = mkCallLift( irb, dn, dvi->getVariableLocation(), varname );
         }
         auto iit = dvi->getParent()->begin();
         while ( &*iit != dvi )

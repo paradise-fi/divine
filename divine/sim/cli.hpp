@@ -263,11 +263,10 @@ struct CLI
     llvm::Value* find_tamperee( const DN & );
 
     template< typename IRBuilder >
-    llvm::Value* mkCallNondet( IRBuilder &, DN &, const std::string &, const std::string & );
+    llvm::Value* mkCallNondet( IRBuilder &, DN &, const std::string & );
 
     template< typename IRBuilder >
-    llvm::Value* mkCallLift( IRBuilder &, DN &, const std::string &, llvm::Value *,
-                             const std::string & );
+    llvm::Value* mkCallLift( IRBuilder &, DN &, llvm::Value *, const std::string & );
 
     void tamper( const command::tamper &, DN &, llvm::AllocaInst * );
     void tamper( const command::tamper &, DN &, llvm::Argument * );

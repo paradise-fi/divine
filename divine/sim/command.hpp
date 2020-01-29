@@ -168,12 +168,10 @@ namespace divine::sim::command
     struct tamper : with_var, teflon
     {
         brq::cmd_flag lift;
-        std::string domain = "unit";
 
         void options( brq::cmd_options &c ) override
         {
             c.section( "Tamper Options" );
-            c.opt( "--domain", domain ) << "the domain to abstract the variable into";
             c.opt( "--lift", lift ) << "lift the original value instead of creating a nondet";
             with_var::options( c );
         }
