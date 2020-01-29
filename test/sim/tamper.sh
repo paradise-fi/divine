@@ -25,7 +25,7 @@ EOF
 OUTF_PURE=pure.bc
 OUTF=tamper.bc
 
-sim file.c <<EOF
+sim --lamp symbolic file.c <<EOF
 + ^# executing __boot at
 > bitcode --dump $OUTF_PURE
 ! ERROR
