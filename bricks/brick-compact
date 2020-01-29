@@ -323,7 +323,7 @@ namespace brq
         {
             key_t idx = value.first;
             bool is_new = _bump( value.first );
-            if ( is_new )
+            if ( is_new || _container[ idx ] == val_t() )
                 _container[ idx ] = value.second;
             return { iterator( idx, _container.begin() + idx ), is_new };
         }
@@ -336,7 +336,11 @@ namespace brq
         void erase( iterator pos ) { pos->second = val_t(); }
         void erase( key_t key ) { _container[ key ] = val_t(); }
 
-        size_type count( key_t key ) const { return size_t( key ) < size(); }
+        size_type count( key_t key ) const
+        {
+            return size_t( key ) < size() && _container[ key ] != val_t();
+        }
+
         iterator find( key_t k ) { return count( k ) ? begin() + k : end(); }
         const_iterator find( key_t k ) const { return count( k ) ? cbegin() + k : end(); }
 
