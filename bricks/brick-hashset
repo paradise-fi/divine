@@ -363,7 +363,8 @@ namespace brq::impl
         brq::refcount_ptr< hash_table, true > next;
         std::atomic< size_t > _size;
         std::atomic< ssize_t > to_rehash;
-        Cell data[];
+        uint8_t _data[];
+        Cell &data( int i = 0 ) { return reinterpret_cast< Cell * >( _data )[ i ]; }
 
         using value_type = typename Cell::value_type;
 
@@ -394,7 +395,14 @@ namespace brq::impl
         hash_table( size_t size, ssize_t rehash )
             : next( nullptr ), _size( size ), to_rehash( rehash )
         {
-            std::uninitialized_default_construct( data, data + size );
+            std::uninitialized_default_construct( &data(), &data() + size );
+        }
+
+        ~hash_table()
+        {
+            auto s = size();
+            for ( decltype( s ) i = 0; i < s; ++i )
+                data( i ).~Cell();
         }
 
         size_t size() { return _size.load( std::memory_order_relaxed ); }
@@ -404,7 +412,7 @@ namespace brq::impl
         Cell *segment_begin( int id )
         {
             ASSERT_LT( id, segment_count() );
-            return data + segment_size() * id;
+            return &data() + segment_size() * id;
         }
 
         static constexpr const size_t cluster_bytes = 32;
@@ -432,7 +440,7 @@ namespace brq::impl
 
             for ( unsigned i = 0; i < max; ++i )
             {
-                Cell &cell = data[ index( h, i, mask ) ];
+                Cell &cell = data( index( h, i, mask ) );
 
                 if ( cell.invalid() )
                     return { nullptr, Invalid };
@@ -467,7 +475,7 @@ namespace brq::impl
 
             for ( size_t i = 0; i < max_chain; ++i )
             {
-                Cell &cell = data[ index( h, i, mask ) ];
+                Cell &cell = data( index( h, i, mask ) );
                 if ( cell.invalid() )
                     return { nullptr, Invalid };
                 if ( cell.empty() )
@@ -537,7 +545,7 @@ namespace brq::impl
             hash_set_stats st;
             st.capacity = _table->size();
             for ( size_t i = 0; i < st.capacity; ++i )
-                if ( !_table->data[ i ].empty() )
+                if ( !_table->data( i ).empty() )
                     st.used ++;
             return st;
         }
@@ -749,10 +757,10 @@ namespace brq::impl
             _table = make_table( o.capacity(), 0 );
             _table->to_rehash = _table->segment_count();
             /* TODO avoid the default-construct + overwrite here */
-            std::copy( o._table->data, o._table->data + capacity(), _table->data );
+            std::copy( &o._table->data(), &o._table->data() + capacity(), &_table->data() );
         }
 
-        cell &cell_at( size_t index ) { return _table->data[ index ]; }
+        cell &cell_at( size_t index ) { return _table->data( index ); }
         value_type valueAt( size_t idx ) { return cell_at( idx ).fetch(); }
         bool valid( size_t idx ) { return !cell_at( idx ).empty(); }
     };
