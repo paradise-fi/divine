@@ -1,2 +1,2 @@
 common tags: c++
-          | brick::t_smt::UnionFind::integer
+          | t_brq::smt::uf::parity
