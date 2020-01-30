@@ -60,7 +60,9 @@ struct BCParseError : brq::error { using brq::error::error; };
 
 struct BCOptions
 {
-    using Env = std::vector< std::tuple< std::string, std::vector< uint8_t > > >;
+    using bstr = std::vector<uint8_t>;
+    using env_option = std::tuple< std::string, bstr >;
+    using Env = std::vector< env_option >;
 
     brq::cmd_file input_file;
     std::vector< std::string > ccopts;
