@@ -34,10 +34,16 @@ mkobjs( libcxx    "${flags};-D_LIBCPP_BUILDING_LIBRARY;-DLIBCXX_BUILDING_LIBCXXA
 list( APPEND flags -I${CMAKE_CURRENT_BINARY_DIR} )
 set( flags "${flags};${WARN}" )
 
+if( CMAKE_BUILD_TYPE STREQUAL "Debug" )
+  set( EXTRA_OPT "-DNDEBUG" )
+else()
+  set( EXTRA_OPT "-O3;-DNDEBUG;-D__inline_opt='__attribute__((__always_inline__))'" )
+endif()
+
 mkobjs( dios "${flags};-D__dios_kernel__;${NOEXCEPT};-std=c++17" )
 mkobjs( config "${flags};-D__dios_kernel__;${NOEXCEPT};-std=c++17" )
-mkobjs( librst "${flags};${NOEXCEPT};-std=c++17" )
-mkobjs( lamp "${flags};${NOEXCEPT};-std=c++17" )
+mkobjs( librst "${flags};${NOEXCEPT};-std=c++17;${EXTRA_OPT}" )
+mkobjs( lamp "${flags};${WARN};${NOEXCEPT};-std=c++17;${EXTRA_OPT}" )
 
 foreach( arch divm klee native )
     mkobjs( dios_${arch} "${flags};${NOEXCEPT}" )
