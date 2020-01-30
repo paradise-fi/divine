@@ -28,7 +28,6 @@
 #include <divine/mc/job.hpp>
 
 #include <divine/ra/base.hpp>
-#include <divine/ra/util.hpp>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
