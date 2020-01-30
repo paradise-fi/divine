@@ -121,12 +121,13 @@ namespace lart::mcsema
         template< typename irb_t >
         llvm::Value *allocate( llvm::Type * type, irb_t &irb )
         {
-            // Currently we use malloc
-            auto malloc_f = _m->getFunction( "malloc" );
-            if ( !malloc_f )
-                UNREACHABLE( "Could not find malloc while lowering struct" );
+            auto allocator_f = _m->getFunction( "__vm_obj_make" );
+            if ( !allocator_f )
+                UNREACHABLE( "Could not find allocator while lowering struct" );
 
-            auto memory = irb.CreateCall( malloc_f, i64( _dl.getTypeAllocSize( type ) ) );
+            auto memory = irb.CreateCall(
+                    allocator_f,
+                    { i32( _dl.getTypeAllocSize( type ) ), i32( 3 ) } );
             return irb.CreateBitCast( memory, ptr( type ) );
         }
 
