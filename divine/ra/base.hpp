@@ -25,7 +25,7 @@
 #include <divine/mc/job.tpp>
 #include <divine/mc/safety.hpp>
 
-#include <divine/ra/util.hpp>
+#include <brick-llvm>
 
 DIVINE_RELAX_WARNINGS
 #include <llvm/IR/Module.h>
@@ -69,7 +69,7 @@ namespace divine::ra {
         {
             if ( _bc_opts.input_file.name.empty() )
                 UNREACHABLE( "Invalid options passed to refinement_t input_file is missing" );
-            _m = util::load_bc( _bc_opts.input_file.name, &*_ctx );
+            _m = brick::llvm::load_bc( _bc_opts.input_file.name, &*_ctx );
         }
 
         auto make_bc() {
