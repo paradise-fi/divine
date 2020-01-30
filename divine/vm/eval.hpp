@@ -419,7 +419,7 @@ public:
     void implement_test_crit();
     void implement_test_taint();
 
-    std::tuple< int, int, typename Heap::Loc > memory_range();
+    std::tuple< int, int, int, typename Heap::Loc > memory_range();
     void implement_peek();
     void implement_poke();
 

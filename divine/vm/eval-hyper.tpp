@@ -471,7 +471,7 @@ namespace divine::vm
     }
 
     template< typename Ctx >
-    auto Eval< Ctx >::memory_range() -> std::tuple< int, int, typename Heap::Loc >
+    auto Eval< Ctx >::memory_range() -> std::tuple< int, int, int, typename Heap::Loc >
     {
         auto key = operandCk< IntV >( 0 );
         auto obj = operandCk< UIntV >( 1 );
@@ -483,17 +483,17 @@ namespace divine::vm
 
         if ( !key.defined() || !obj.defined() || !off.defined() || !len.defined()||
              !boundcheck( PointerV( ptr ), len.cooked(), false ) )
-            return { -1, 0, {} };
+            return { -1, 0, 0, {} };
 
         auto hptr = ptr2h( ptr );
         typename Heap::Loc loc( heap().ptr2i( hptr.object() ), hptr.object(), hptr.offset() );
-        return { key.cooked(), len.cooked(), loc };
+        return { key.cooked(), len.cooked(), hptr.offset() - off.cooked(), loc };
     }
 
     template< typename Ctx >
     void Eval< Ctx >::implement_peek()
     {
-        auto [ key, len, loc ] = memory_range();
+        auto [ key, len, delta, loc ] = memory_range();
         TRACE( "peek at", key, len, loc );
 
         if ( key < 0 )
@@ -505,7 +505,7 @@ namespace divine::vm
         {
             auto [ off, nlen, val ] = heap().peek( loc, len, key - _VM_ML_User );
             auto out = s2ptr( result() );
-            heap().write( out, IntV( off ) );  out = out + 4;
+            heap().write( out, IntV( off - delta ) );  out = out + 4;
             heap().write( out, IntV( nlen ) ); out = out + 4;
             heap().write( out, val );
         }
@@ -514,7 +514,7 @@ namespace divine::vm
     template< typename Ctx >
     void Eval< Ctx >::implement_poke()
     {
-        auto [ key, len, loc ] = memory_range();
+        auto [ key, len, delta, loc ] = memory_range();
         auto val = operandCk< UIntV >( 4 );
         TRACE( "poke", val, "at", key, len, loc );
 
