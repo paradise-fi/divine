@@ -38,113 +38,113 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine::ra {
 
-struct ce_t
-{
-    using stack_trace_t = std::vector< llvm::Instruction * >;
-    using dbg_ctx_t = dbg::Context< vm::CowHeap >;
-
-    dbg::Info info;
-    dbg_ctx_t dbg_ctx;
-
-    ce_t( mc::Job &job, mc::BitCode *bc )
-        : info( *bc->_program, *bc->_module ),
-          dbg_ctx( bc->program(), bc->debug() )
+    struct ce_t
     {
-        _create_ctx( dbg_ctx, job );
-    }
+        using stack_trace_t = std::vector< llvm::Instruction * >;
+        using dbg_ctx_t = dbg::Context< vm::CowHeap >;
 
-    void _create_ctx( dbg_ctx_t &dbg_ctx, mc::Job &job );
+        dbg::Info info;
+        dbg_ctx_t dbg_ctx;
 
-    stack_trace_t stack_trace();
-
-    template< typename Yield >
-    void stack_trace( Yield &&yield )
-    {
-        auto &heap = dbg_ctx.heap();
-
-
-        vm::PointerV iter_frame( dbg_ctx.frame() );
-        vm::PointerV parent;
-
-        while ( !iter_frame.cooked().null() )
+        ce_t( mc::Job &job, mc::BitCode *bc )
+            : info( *bc->_program, *bc->_module ),
+              dbg_ctx( bc->program(), bc->debug() )
         {
-            yield( iter_frame, heap, info );
-            // First entry of frame is program counter
-            heap.read_shift( iter_frame, parent );
-            heap.read_shift( iter_frame, parent );
-            iter_frame = parent;
+            _create_ctx( dbg_ctx, job );
         }
-    }
 
-    template< typename Stream >
-    static Stream &trace( Stream &os, const stack_trace_t& stack_trace )
+        void _create_ctx( dbg_ctx_t &dbg_ctx, mc::Job &job );
+
+        stack_trace_t stack_trace();
+
+        template< typename Yield >
+        void stack_trace( Yield &&yield )
+        {
+            auto &heap = dbg_ctx.heap();
+
+
+            vm::PointerV iter_frame( dbg_ctx.frame() );
+            vm::PointerV parent;
+
+            while ( !iter_frame.cooked().null() )
+            {
+                yield( iter_frame, heap, info );
+                // First entry of frame is program counter
+                heap.read_shift( iter_frame, parent );
+                heap.read_shift( iter_frame, parent );
+                iter_frame = parent;
+            }
+        }
+
+        template< typename Stream >
+        static Stream &trace( Stream &os, const stack_trace_t& stack_trace )
+        {
+            os << "Stack trace:" << std::endl;
+            for ( auto frame : stack_trace )
+                os << "\t"
+                   << ( frame ? frame->getFunction()->getName().str() : "nullptr" )
+                   << std::endl;
+            return os;
+        }
+    };
+
+    // TODO: Maybe let refiner_t be mixin?
+    template< typename refiner_t >
+    struct llvm_refinement : refinement_t
     {
-        os << "Stack trace:" << std::endl;
-        for ( auto frame : stack_trace )
-            os << "\t" << ( frame ? frame->getFunction()->getName().str() : "nullptr" )
-               << std::endl;
-        return os;
-    }
-};
+        using BCOptions = refinement_t::BCOptions;
 
-// TODO: Maybe let refiner_t be mixin?
-template< typename refiner_t >
-struct llvm_refinement : refinement_t
-{
-    using BCOptions = refinement_t::BCOptions;
+        refiner_t _refiner;
 
-    refiner_t _refiner;
+        llvm_refinement( std::shared_ptr< llvm::LLVMContext > ctx,
+                         std::unique_ptr< llvm::Module > m,
+                         const BCOptions &bc_opts )
+            : refinement_t( std::move( ctx ), std::move( m ), bc_opts ),
+             _refiner( *_m )
+        {}
 
-    llvm_refinement( std::shared_ptr< llvm::LLVMContext > ctx,
-                     std::unique_ptr< llvm::Module > m,
-                     const BCOptions &bc_opts )
-        : refinement_t( std::move( ctx ), std::move( m ), bc_opts ),
-         _refiner( *_m )
-    {}
+        llvm_refinement( const BCOptions &bc_opts )
+            : refinement_t( bc_opts ), _refiner( *_m )
+        {}
 
-    llvm_refinement( const BCOptions &bc_opts )
-        : refinement_t( bc_opts ), _refiner( *_m )
-    {}
+        bool iterate( uint64_t n )
+        {
+            if ( n == 0 ) return false;
+            if ( n == 1 ) return iterate();
+            iterate();
+            return iterate( n - 1 );
+        }
 
-    bool iterate( uint64_t n )
+        void finish()
+        {
+            while ( !iterate() ) {}
+        }
+
+        bool iterate() {
+            auto [ result, bc ] = this->run();
+            if ( result->result() == mc::Result::Valid )
+                return true;
+            ce_t ce( *result, bc.get() );
+            _refiner.enhance( ce );
+            return false;
+        }
+
+        std::string report() { _refiner.report(); }
+    };
+
+    struct remove_indirect_calls
     {
-        if ( n == 0 ) return false;
-        if ( n == 1 ) return iterate();
-        iterate();
-        return iterate( n - 1 );
-    }
+        lart::divine::rewire_calls_t llvm_pass;
 
-    void finish()
-    {
-        while ( !iterate() ) {}
-    }
+        remove_indirect_calls( llvm::Module &m ) : llvm_pass( m )
+        {
+            llvm_pass.init();
+        }
 
-    bool iterate() {
-        auto [ result, bc ] = this->run();
-        if ( result->result() == mc::Result::Valid )
-            return true;
-        ce_t ce( *result, bc.get() );
-        _refiner.enhance( ce );
-        return false;
-    }
+        void enhance( ce_t &counter_example );
 
-    std::string report() { _refiner.report(); }
-};
+        std::string report() { return llvm_pass.report(); }
+    };
 
-struct remove_indirect_calls
-{
-    lart::divine::rewire_calls_t llvm_pass;
-
-    remove_indirect_calls( llvm::Module &m ) : llvm_pass( m )
-    {
-        llvm_pass.init();
-    }
-
-    void enhance( ce_t &counter_example );
-
-    std::string report() { return llvm_pass.report(); }
-};
-
-using indirect_calls_refinement_t = llvm_refinement< remove_indirect_calls >;
-
-} // namespace divine::ra
+    using indirect_calls_refinement_t = llvm_refinement< remove_indirect_calls >;
+}

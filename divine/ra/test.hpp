@@ -38,6 +38,7 @@ DIVINE_UNRELAX_WARNINGS
 #include <divine/ra/llvmrefine.hpp>
 
 namespace divine::t_ra {
+
     struct base {
         static const bool dont_link = false;
         static const bool verbose = false;

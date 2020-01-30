@@ -34,58 +34,57 @@ DIVINE_UNRELAX_WARNINGS
 
 namespace divine::ra {
 
-// Preset minimal attributes needed to be passed to divine::mc::make_job
-struct _BitCode : divine::mc::BitCode
-{
-    _BitCode( std::unique_ptr< llvm::Module > m,
-              std::shared_ptr< llvm::LLVMContext > ctx,
-              const divine::mc::BCOptions &opts)
-    : BitCode( std::move( m ), ctx )
+    // Preset minimal attributes needed to be passed to divine::mc::make_job
+    struct _BitCode : divine::mc::BitCode
     {
-        this->set_options( opts );
-        this->init();
-    }
-};
+        _BitCode( std::unique_ptr< llvm::Module > m,
+                  std::shared_ptr< llvm::LLVMContext > ctx,
+                  const divine::mc::BCOptions &opts)
+        : BitCode( std::move( m ), ctx )
+        {
+            this->set_options( opts );
+            this->init();
+        }
+    };
 
-struct refinement_t
-{
-    using BCOptions = divine::mc::BCOptions;
-
-    BCOptions _bc_opts;
-
-    // Order is important because of dtors
-    std::shared_ptr< llvm::LLVMContext > _ctx = std::make_shared< llvm::LLVMContext >();
-    std::unique_ptr< llvm::Module > _m;
-
-    refinement_t( std::shared_ptr< llvm::LLVMContext > ctx,
-                  std::unique_ptr< llvm::Module > m,
-                  const BCOptions &bc_opts )
-        : _ctx( std::move( ctx ) ),
-          _m ( std::move( m ) ),
-          _bc_opts( bc_opts )
-    {}
-
-    refinement_t( const BCOptions &bc_opts ) : _bc_opts( bc_opts )
+    struct refinement_t
     {
-        if ( _bc_opts.input_file.name.empty() )
-            UNREACHABLE( "Invalid options passed to refinement_t input_file is missing" );
-        _m = util::load_bc( _bc_opts.input_file.name, &*_ctx );
-    }
+        using BCOptions = divine::mc::BCOptions;
 
-    auto make_bc() {
-        return std::make_shared< _BitCode >( llvm::CloneModule( *_m ), _ctx, _bc_opts );
-    }
+        BCOptions _bc_opts;
 
-    template< template<typename, typename> class job_t = divine::mc::Safety >
-    auto run() {
-        auto bc = make_bc();
-        auto safe = mc::make_job< job_t >( bc, ss::passive_listen() );
-        // FIXME: thread_count
-        safe->start( 1 );
-        safe->wait();
-        return std::pair( std::move( safe ), std::move( bc ) );
-    }
+        // Order is important because of dtors
+        std::shared_ptr< llvm::LLVMContext > _ctx = std::make_shared< llvm::LLVMContext >();
+        std::unique_ptr< llvm::Module > _m;
 
-};
+        refinement_t( std::shared_ptr< llvm::LLVMContext > ctx,
+                      std::unique_ptr< llvm::Module > m,
+                      const BCOptions &bc_opts )
+            : _ctx( std::move( ctx ) ),
+              _m ( std::move( m ) ),
+              _bc_opts( bc_opts )
+        {}
 
-} // namespace divine::ra
+        refinement_t( const BCOptions &bc_opts ) : _bc_opts( bc_opts )
+        {
+            if ( _bc_opts.input_file.name.empty() )
+                UNREACHABLE( "Invalid options passed to refinement_t input_file is missing" );
+            _m = util::load_bc( _bc_opts.input_file.name, &*_ctx );
+        }
+
+        auto make_bc() {
+            return std::make_shared< _BitCode >( llvm::CloneModule( *_m ), _ctx, _bc_opts );
+        }
+
+        template< template<typename, typename> class job_t = divine::mc::Safety >
+        auto run() {
+            auto bc = make_bc();
+            auto safe = mc::make_job< job_t >( bc, ss::passive_listen() );
+            // FIXME: thread_count
+            safe->start( 1 );
+            safe->wait();
+            return std::pair( std::move( safe ), std::move( bc ) );
+        }
+
+    };
+}
