@@ -77,6 +77,9 @@ struct BCOptions
     checkpoint leakcheck;
     std::string relaxed;
 
+    // FIXME: Serializer is currently present in the ui component since it formats
+    //        output to the yaml format manually as no yaml writer is present
+    //        in the codebase
     static BCOptions from_report( brick::yaml::Parser &parsed );
 };
 
