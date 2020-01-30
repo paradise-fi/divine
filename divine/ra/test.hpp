@@ -56,8 +56,8 @@ namespace divine::t_ra {
         auto minimal_bc( const std::string &src ) {
             divine::mc::BCOptions bc_opts;
             bc_opts.dios_config = "default";
-            using bstr_t = divine::mc::BCOptions::bstr_t;
-            bc_opts.bc_env = { { "divine.bcname",  bstr_t( src.begin(), src.end() ) } };
+            using bstr = divine::mc::BCOptions::bstr;
+            bc_opts.bc_env = { { "divine.bcname",  bstr( src.begin(), src.end() ) } };
             return bc_opts;
         }
     };
