@@ -173,7 +173,6 @@ stp::ASTNode STP::binary( brq::smt_op op, Node a, Node b, int bw )
             case op_t::bool_or:
             case op_t::bv_or:
                 return _stp.CreateNode( stp::OR, a, b );
-            case op_t::constraint:
             case op_t::bool_and:
             case op_t::bv_and:
                 return _stp.CreateNode( stp::AND, a,  b );

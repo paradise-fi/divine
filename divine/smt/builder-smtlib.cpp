@@ -241,7 +241,6 @@ SMTLib2::Node SMTLib2::binary( brq::smt_op op, Node a, Node b, int bw )
             case op_t::bool_or:
             case op_t::bv_or:
                 return define( _ctx.binop< op_t::bool_or >( 1, a, b ) );
-            case op_t::constraint:
             case op_t::bool_and:
             case op_t::bv_and:
                 return define( _ctx.binop< op_t::bool_and >( 1, a, b ) );

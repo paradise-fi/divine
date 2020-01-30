@@ -211,7 +211,6 @@ z3::expr Z3::binary( brq::smt_op op, Node a, Node b, int )
             case op_t::bv_or:
                 return a || b;
             case op_t::bool_and:
-            case op_t::constraint:
             case op_t::bv_and:
                 return a && b;
             case op_t::bv_uge:

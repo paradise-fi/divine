@@ -30,7 +30,7 @@
 namespace divine::smt
 {
     template< typename builder_t, typename expr_t >
-    auto evaluate( builder_t &bld, const expr_t &expr, bool *is_constraint = nullptr )
+    auto evaluate( builder_t &bld, const expr_t &expr )
     {
         using node_t = typename builder_t::Node;
 
@@ -54,9 +54,6 @@ namespace divine::smt
 
         for ( auto &atom : expr )
         {
-            if ( is_constraint )
-                *is_constraint = atom.op == brq::smt_op::constraint;
-
             auto op = atom.op;
 
             if      ( atom.varid() )      push( bld.variable( atom.varid(), atom.bw() ), atom.bw() );
