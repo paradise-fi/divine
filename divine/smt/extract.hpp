@@ -62,6 +62,8 @@ struct Extract : Builder
                 auto b = _heap.unsafe_bytes( clause.cooked() );
                 expr_t clause_expr{ b.begin(), b.end() - 1 };
                 TRACE( "clause:", clause_expr, first );
+                if ( clause_expr.empty() )
+                    continue;
                 expr.apply( clause_expr );
                 if ( first )
                     first = false;
