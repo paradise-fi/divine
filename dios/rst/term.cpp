@@ -20,7 +20,7 @@ namespace __lava
         {
             if ( auto new_it = decomp.find( new_ ); new_it != decomp.end() )
             {
-                new_it->second.apply( old_it->second, brq::smt_op::constraint );
+                new_it->second.apply( old_it->second, brq::smt_op::bool_and );
                 __vm_trace( _VM_T_Assume, new_it->second.begin() );
             }
             else
@@ -38,29 +38,57 @@ namespace __lava
     /* Add a constraint to the term. A constraint is again a term_t, e.g. a > 7.
      * !`expect` is for when an else branch was taken, in which case the tested
      * condition had to be false. */
-    term term::assume( const term &t, const term &c, bool expect )
+    __flatten term term::assume( const term &t, const term &c, bool expect )
     {
-        if ( !expect )
-            return assume( t, term( c, op::bool_not ), true );
-
         auto &decomp = __term_state->decomp;
+        auto &uf = __term_state->uf;
 
-        auto append_term = [&]( brq::smt_varid_t var )
+        int id = 0;
+        auto it = decomp.begin();
+        auto at = c.begin();
+
+        for ( ; at != c.end(); ++at )
+            if ( auto x = at->varid() )
+            {
+                id = uf.make_set( x );
+                if ( auto ex = decomp.find( id ); ex != decomp.end() )
+                {
+                    it = ex;
+                    if ( expect )
+                        ex->second.apply( c, brq::smt_op::bool_and );
+                    else
+                        ex->second.apply( c, brq::smt_op::bool_not, brq::smt_op::bool_and );
+                }
+                else
+                {
+                    it = decomp.emplace( id, c ).first;
+                    if ( !expect )
+                        it->second.apply( brq::smt_op::bool_not );
+                }
+                break;
+            }
+
+        for ( ; at != c.end(); ++at )
+            if ( auto x = at->varid() )
+            {
+                int x_id = uf.make_set( x );
+                if ( id == x_id )
+                    continue;
+                uf.join( id, x_id );
+                if ( auto ex = decomp.find( x_id ); ex != decomp.end() )
+                {
+                    it->second.apply( ex->second, brq::smt_op::bool_and );
+                    decomp.erase( ex ); /* might invalidate 'it' */
+                    it = decomp.find( id );
+                }
+            }
+
+        if ( id )
+            __vm_trace( _VM_T_Assume, it->second.unsafe_ptr() );
+        else
         {
-            if ( auto it = decomp.find( var ); it != decomp.end() )
-                it->second.apply( c, brq::smt_op::bool_and );
-            else
-                decomp.emplace( var, c );
-        };
-
-        auto id = brq::smt_decompose< stack_t >( c, __term_state->uf, update_rpns );
-
-        if ( !id )
-            __vm_trace( _VM_T_Assume, term( c ).disown() ); /* FIXME leak */
-        else  // append to relevant decomp
-        {
-            append_term( id );
-            __vm_trace( _VM_T_Assume, decomp.find( id )->second.begin() );
+            auto trace = expect ? term( c ) : term( c, brq::smt_op::bool_not );
+            __vm_trace( _VM_T_Assume, trace.disown() ); /* FIXME leak */
         }
 
         return t;
