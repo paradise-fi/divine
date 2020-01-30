@@ -394,7 +394,7 @@ namespace brq
         key_t make_set( key_t x )
         {
             if ( auto r = _map[ x ] )
-                return r;
+                return _map[ x ] = find( r );
             else
                 return _map[ x ] = x;
         }
