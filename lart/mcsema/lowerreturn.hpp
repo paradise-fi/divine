@@ -111,11 +111,27 @@ namespace lart::mcsema
             return std::string( wrapper_prefix ) + std::to_string( ++counter );
         }
 
-        // FIXME: Currently we leak memory
-        template< typename irb_t >
-        void free( llvm::Value * val, irb_t &irb )
+        void deallocate( llvm::Value *ptr, llvm::Instruction *ret )
         {
-            UNREACHABLE( "Not implemented" );
+            auto free_f = _m->getFunction( "__vm_obj_free" );
+            if ( !free_f )
+                UNREACHABLE( "Could not find free function" );
+
+            llvm::IRBuilder<> irb( ret );
+            auto i8ptr = irb.CreateBitCast( ptr, i8PTy() );
+            irb.CreateCall( i8ptr );
+
+        }
+
+        void deallocate( llvm::Value * val )
+        {
+            auto all_rets = query::query( *util::get_function( val ) )
+                            .flatten()
+                            .filter( query::llvmdyncast< llvm::ReturnInst > )
+                            .map( query::refToPtr )
+                            .freeze();
+            for ( auto ret : all_rets )
+                deallocate( val, ret );
         }
 
         template< typename irb_t >
