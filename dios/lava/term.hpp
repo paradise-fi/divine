@@ -222,7 +222,7 @@ namespace __lava
         template< typename val >
         using dense_map = brq::dense_map< brq::smt_varid_t, val, __dios::Array< val, _VM_PT_Weak > >;
         brq::union_find< dense_map< brq::smt_varid_t > > uf;
-        __dios::ArrayMap< brq::smt_varid_t, term > decomp; /* maps representants to terms */
+        dense_map< term > decomp; /* maps representants to terms */
     };
 
     extern term_state_t *__term_state;
