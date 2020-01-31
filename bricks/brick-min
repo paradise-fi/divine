@@ -24,6 +24,10 @@
 #include <string_view>
 #include <charconv>
 
+#ifndef __inline_opt
+#define __inline_opt
+#endif
+
 namespace brq
 {
     template< typename B, typename T, typename = void > struct is_printable : std::false_type {};

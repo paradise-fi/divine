@@ -63,7 +63,7 @@ namespace brq
 
     using smt_varid_t = uint16_t;
 
-    constexpr smt_traits_t smt_traits( smt_op v )
+    __inline_opt constexpr smt_traits_t smt_traits( smt_op v )
     {
         using op = smt_op;
 
@@ -175,10 +175,10 @@ namespace brq
     template< smt_op_type t, int bw >
     constexpr smt_op smt_match_op = smt_match_op_f< t, bw >();
 
-    constexpr const char *smt_name( smt_op op )  { return smt_traits( op ).name; }
-    constexpr int         smt_bw( smt_op op )    { return smt_traits( op ).bitwidth; }
-    constexpr int         smt_imm( smt_op op )   { return smt_traits( op ).imm_bytes; }
-    constexpr int         smt_arity( smt_op op ) { return smt_traits( op ).arity; }
+    __inline_opt constexpr int smt_imm( smt_op op )   { return smt_traits( op ).imm_bytes; }
+    __inline_opt constexpr int smt_bw( smt_op op )    { return smt_traits( op ).bitwidth; }
+    __inline_opt constexpr int smt_arity( smt_op op ) { return smt_traits( op ).arity; }
+    constexpr const char      *smt_name( smt_op op )  { return smt_traits( op ).name; }
 
     template< typename stream >
     auto operator<<( stream &o, smt_op op ) -> decltype( o << "" )
@@ -217,9 +217,9 @@ namespace brq
         smt_atom_t &operator=( uint8_t op_ ) { op = smt_op( op_ ); }
 
         template< typename T >
-        void copy_from( const smt_atom_t< T > &o )
+        [[gnu::always_inline]] void copy_from( const smt_atom_t< T > &o, int size = 0 )
         {
-            memcpy( this, &o, o.size() );
+            memcpy( this, &o, size ? size : o.size() );
         }
 
         bool is_const()   const { return smt_traits( op ).is_const(); }
@@ -259,7 +259,7 @@ namespace brq
             return val;
         }
 
-        size_t size() const { return 1 + smt_imm( op ); }
+        __inline_opt size_t size() const { return 1 + smt_imm( op ); }
         size_t imm_size() const { return smt_imm( op ); }
         smt_varid_t varid() const { return smt_traits( op ).is_var() ? imm_get< smt_varid_t >() : 0; }
         auto bounds() const { return imm_get< std::pair< uint8_t, uint8_t > >(); }
@@ -360,15 +360,17 @@ namespace brq
         template< typename imm_t >
         void apply( const smt_atom_t< imm_t > &v )
         {
-            base::resize( base::size() + v.size() );
-            iterator it = base::end() - v.size();
-            it->copy_from( v );
+            int size = v.size();
+            base::resize( base::size() + size );
+            iterator it = base::end() - size;
+            it->copy_from( v, size );
         }
 
         void apply( const smt_expr &e )
         {
-            base::resize( base::size() + e.base::size() );
-            auto it = base::end() - e.base::size();
+            int e_size = e.base::size();
+            base::resize( base::size() + e_size );
+            auto it = base::end() - e_size;
             std::copy( e.base::begin(), e.base::end(), it );
         }
 
