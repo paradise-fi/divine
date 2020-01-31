@@ -1,0 +1,93 @@
+/*
+ * Copyright (C) 2020 Petr Rockai <code@fixp.eu>
+ *
+ * Permission to use, copy, modify, and distribute this software for any
+ * purpose with or without fee is hereby granted, provided that the above
+ * copyright notice and this permission notice appear in all copies.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
+ * WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
+ * MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
+ * ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
+ * WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
+ * ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
+ * OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+ */
+
+#pragma once
+#include <x86intrin.h>
+#include <atomic>
+#include <array>
+
+namespace brq
+{
+    /* This class provides a low-overhead, thread-safe profiling timer &
+     * counter. On recent hardware, the typical single-threaded overhead (for
+     * entry + exit) is 100-200 cycles (or about 40-80ns), exact numbers
+     * depending on the CPU model. Each timer is global and distinct timers can
+     * be created by instantiating the 'timer' template with different tag
+     * types. E.g. `struct foo_timer_tag; using foo_timer = brq::timer<
+     * foo_timer_tag >;` Instances of such a type work as RAII interval timers
+     * that sum up over the lifetime of the program. Nesting is *not* guarded
+     * and will result in double-counting. */
+
+    template< typename >
+    struct timer
+    {
+        struct alignas( 64 ) counter_t /* 64 = expected cache line size */
+        {
+            std::atomic< long > time, hits;
+            void reset() { time.store( 0 ); hits.store( 0 ); }
+        };
+
+        using counters_t = std::array< counter_t, 32 >;
+        counter_t *_ctr;
+
+        [[gnu::always_inline]] timer( bool measure = true )
+        {
+            static counters_t ctr;
+            if ( measure )
+            {
+                auto t = __rdtsc();
+                _ctr = &ctr[ t & 0x1f ];
+                _ctr->time -= t;
+                _ctr->hits ++;
+            }
+            else
+                _ctr = ctr.begin();
+        }
+
+        static std::pair< long, long > read()
+        {
+            timer x( false );
+            long time = 0, hits = 0;
+            for ( int i = 0; i < 32; ++i )
+            {
+                time += x._ctr[ i ].time;
+                hits += x._ctr[ i ].hits;
+            }
+            x._ctr = nullptr;
+            return { time, hits };
+        }
+
+        static void reset()
+        {
+            timer x( false );
+            for ( int i = 0; i < 32; ++i )
+                x._ctr[ i ].reset();
+            x._ctr = nullptr;
+        }
+
+        void stop()
+        {
+            _ctr->time += __rdtsc();
+            _ctr = nullptr;
+        }
+
+        [[gnu::always_inline]] ~timer()
+        {
+            if ( _ctr )
+                _ctr->time += __rdtsc();
+        }
+    };
+}
