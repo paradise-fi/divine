@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <divine/mc/types.hpp>
 #include <divine/mc/bitcode.hpp>
 #include <divine/mc/hasher.hpp>
 #include <divine/mc/context.hpp>
@@ -133,6 +134,7 @@ struct Builder
 
     std::pair< Snapshot, bool > store( Snapshot snap )
     {
+        hash_timer _timer;
         _hasher.prepare( snap );
         auto r = _d.states.insert( snap, hasher() );
         if ( r->load() != snap )
@@ -241,6 +243,7 @@ struct Builder
 
         auto do_eval = [&]( Check &tc )
         {
+            divm_timer _timer;
             bool cont = false;
             do {
                 cont = eval.run_seq( cont );

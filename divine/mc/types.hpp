@@ -22,11 +22,11 @@
 #include <brick-mem>
 #include <brick-hashset>
 #include <brick-string>
+#include <brick-timer>
 #include <optional>
 
 namespace divine::mc
 {
-
     struct BitCode;
     enum class Result { None, Valid, Error, BootError };
 
@@ -67,4 +67,10 @@ namespace divine::mc
 
     using PoolStats = std::map< std::string, brick::mem::Stats >;
     using HashStats = std::map< std::string, brq::hash_set_stats >;
+
+    struct divm_timer_tag;
+    struct hash_timer_tag;
+
+    using divm_timer = brq::timer< divm_timer_tag >;
+    using hash_timer = brq::timer< hash_timer_tag >;
 }
