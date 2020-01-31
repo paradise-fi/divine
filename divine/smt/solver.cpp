@@ -101,11 +101,20 @@ bool Simple< Core >::feasible( vm::CowHeap & heap, vm::HeapPointer ptr )
 template< typename Core >
 bool Caching< Core >::feasible( vm::CowHeap &heap, vm::HeapPointer ptr )
 {
-    if ( _sat.count( ptr ) )
-        return _hits[ ptr ] ++, _sat[ ptr ];
+    feasibility_timer _t;
+    auto extract = this->extract( heap, 1 );
+    auto expr = extract.read( ptr );
 
-    auto rv = Simple< Core >::feasible( heap, ptr );
-    return _sat[ ptr ] = rv;
+    if ( auto hit = _cache.find( item{ expr, 0, 0 } ); hit.valid() )
+        return ++ hit->hits, hit->sat;
+
+    this->reset();
+    auto b = this->builder();
+    auto query = evaluate( extract, expr );
+    this->add( mk_bin( b, op_t::eq, 1, query, b.constant( 1, 1 ) ) );
+    bool rv = this->solve() != Result::False;
+    _cache.insert( item{ expr, 0, rv } );
+    return rv;
 }
 
 template< typename Core >
@@ -198,6 +207,8 @@ void STP::clear()
 #endif
 
 template struct Simple< SMTLib >;
+template struct Caching< SMTLib >;
+
 #if OPT_Z3
 template struct Simple< Z3 >;
 template struct Incremental< Z3 >;

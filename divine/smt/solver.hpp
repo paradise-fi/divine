@@ -87,10 +87,18 @@ struct Incremental : Simple< Core >
 template< typename Core >
 struct Caching : Simple< Core >
 {
+    struct item
+    {
+        brq::smt_expr< std::vector > key; /* TODO small vector */
+        mutable int hits:31;
+        bool sat:1;
+        auto hash() const { return brq::hash( key.base::data(), key.base::size() ); }
+        bool operator==( const item &o ) const { return key == o.key; }
+    };
+
     using Simple< Core >::Simple;
     bool feasible( vm::CowHeap & heap, vm::HeapPointer assumes );
-    std::unordered_map< vm::HeapPointer, bool > _sat;
-    std::unordered_map< vm::HeapPointer, int > _hits;
+    brq::concurrent_hash_set< item > _cache;
 };
 
 struct SMTLib
