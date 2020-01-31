@@ -50,6 +50,7 @@ template< typename Core >
 bool Simple< Core >::equal( vm::HeapPointer path, SymPairs &sym_pairs,
                             vm::CowHeap &h_1, vm::CowHeap &h_2 )
 {
+    equality_timer _t;
     this->reset();
     auto e_1 = this->extract( h_1, 1 ), e_2 = this->extract( h_2, 2 );
     auto b = this->builder();
@@ -88,6 +89,7 @@ bool Simple< Core >::equal( vm::HeapPointer path, SymPairs &sym_pairs,
 template< typename Core >
 bool Simple< Core >::feasible( vm::CowHeap & heap, vm::HeapPointer ptr )
 {
+    feasibility_timer _t;
     this->reset();
     auto e = this->extract( heap, 1 );
     auto b = this->builder();

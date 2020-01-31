@@ -24,6 +24,7 @@
 #include <divine/smt/extract.hpp>
 #include <vector>
 #include <brick-except>
+#include <brick-timer>
 
 #if OPT_STP
 #include <stp/STPManager/STPManager.h>
@@ -34,6 +35,15 @@
 #if OPT_Z3
 #include <z3++.h>
 #endif
+
+namespace divine::smt
+{
+    struct feasibility_timer_tag;
+    struct equality_timer_tag;
+
+    using feasibility_timer = brq::timer< feasibility_timer_tag >;
+    using equality_timer    = brq::timer< equality_timer_tag >;
+}
 
 namespace divine::smt::solver
 {
