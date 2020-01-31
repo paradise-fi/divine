@@ -58,8 +58,7 @@ namespace brq
         fp_add, fp_sub, fp_mul, fp_div, fp_rem,
         fp_false, fp_oeq, fp_ogt, fp_oge, fp_olt, fp_ole, /* fp_one, */ fp_ord,
         fp_true,  fp_ueq, fp_ugt, fp_uge, fp_ult, fp_ule, /* fp_une, */ fp_uno,
-        bv_extract, bv_concat,
-        constraint
+        bv_extract, bv_concat
     };
 
     using smt_varid_t = uint16_t;
