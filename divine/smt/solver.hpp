@@ -195,15 +195,15 @@ private:
 namespace divine::smt
 {
 
-using SMTLibSolver = solver::Simple< solver::SMTLib >;
+using SMTLibSolver = solver::Caching< solver::SMTLib >;
 using NoSolver = solver::None;
 
 #if OPT_Z3
-using Z3Solver = solver::Simple< solver::Z3 >;
+using Z3Solver = solver::Caching< solver::Z3 >;
 #endif
 
 #if OPT_STP
-using STPSolver = solver::Simple< solver::STP >; // TODO incremental
+using STPSolver = solver::Caching< solver::STP >;
 #endif
 
 }
