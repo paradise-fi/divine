@@ -21,6 +21,8 @@
 #include <divine/ui/sysinfo.hpp>
 #include <divine/ui/util.hpp>
 #include <divine/mc/trace.hpp>
+#include <divine/mc/types.hpp>
+#include <divine/smt/solver.hpp>
 
 using namespace std::literals;
 
@@ -56,6 +58,24 @@ void printpool( std::ostream &ostr, std::string name, const brick::mem::Stats &s
     for ( auto i : s )
         if ( i.count.held )
             ostr << "  " << i.size << ": " << printitem( i ) << std::endl;
+}
+
+template< typename timer >
+void print_timer( std::ostream &ostr, std::string name )
+{
+    auto [ c, h ] = timer::read();
+    ostr << "  " << name << ": { mcycles: " << c / 1000000 << ", hits: " << h
+         << ", kc-avg: " << ( h ? c / ( h * 1000 ) : 0.0 ) << " }" << std::endl;
+    timer::reset();
+}
+
+void print_timers( std::ostream &ostr, std::string name )
+{
+    ostr << "cycle timers (" << name << "):" << std::endl;
+    print_timer< smt::feasibility_timer >( ostr, "smt-f" );
+    print_timer< smt::equality_timer >( ostr, "smt-eq" );
+    print_timer< mc::divm_timer >( ostr, "divm" );
+    print_timer< mc::hash_timer >( ostr, "hash" );
 }
 
 template< typename stream, typename T >
@@ -99,6 +119,9 @@ struct YamlSink : TimedSink
              << std::endl;
         _sysinfo.report( [this]( auto k, auto v )
                          { _out << k << ": " << v << std::endl; } );
+
+        _out << std::endl;
+        print_timers( _out, "search" );
     }
 
     void memory( const mc::PoolStats &ps, const mc::HashStats &hs, bool last ) override
@@ -116,6 +139,7 @@ struct YamlSink : TimedSink
     void result( mc::Result result, const mc::Trace &trace ) override
     {
         TimedSink::result( result, trace );
+
         if ( _detailed )
         {
             _out << "timers:";
@@ -125,6 +149,8 @@ struct YamlSink : TimedSink
                  << std::endl << "  boot: " << double( _time_boot.count() ) / 1000
                  << std::endl << "  search: " << double( _time_search.count() ) / 1000
                  << std::endl << "  ce: " << double( _time_ce.count() ) / 1000 << std::endl;
+            print_timers( _out, "ce" );
+            _out << std::endl;
         }
 
         _out << result << std::endl;
