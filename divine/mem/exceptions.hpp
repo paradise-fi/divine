@@ -461,8 +461,10 @@ struct IntervalMetadataMap
     const_iterator before( Internal obj, scalar_type val ) const
     {
         auto it = _storage.upper_bound( obj, key_type( val ) );
-        if ( it == nullptr || it == _storage.begin( obj ) )
+        if ( it == nullptr )
             return end( obj );
+        if ( it == _storage.begin( obj ) )
+            return it;
         return std::prev( it );
     }
 
