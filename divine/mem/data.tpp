@@ -187,7 +187,7 @@ namespace divine::mem
             else
                 -- bytes;
 
-        return Next::compare( a, b, ptr_cb, bytes );
+        return Next::compare( a, b, ptr_cb, total_bytes );
     }
 
 }
